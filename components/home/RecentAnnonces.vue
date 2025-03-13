@@ -1,69 +1,48 @@
 <template>
-  <section class="py-12">
+  <section class="py-16 bg-gray-50">
     <div class="container mx-auto px-4">
-      <div class="flex justify-between items-center mb-8">
-        <h2 class="text-3xl font-bold">Dernières annonces</h2>
-        <NuxtLink 
-          to="/annonces" 
-          class="text-blue-600 hover:text-blue-800 flex items-center"
-        >
-          Voir toutes les annonces
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </NuxtLink>
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold mb-4">Dernières annonces</h2>
+        <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+          Découvrez les biens à fort potentiel locatif récemment ajoutés
+        </p>
       </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div v-if="loading" class="text-center py-10">
+        <p class="text-gray-500">Chargement des annonces...</p>
+      </div>
+      
+      <div v-else-if="error" class="max-w-2xl mx-auto bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+        <p>{{ error }}</p>
+      </div>
+      
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         <AnnonceCard 
-          v-for="annonce in recentAnnonces" 
+          v-for="annonce in annonces" 
           :key="annonce.id" 
           :annonce="annonce"
         />
+      </div>
+      
+      <div class="text-center mt-8">
+        <NuxtLink to="/annonces" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-md text-lg font-medium inline-block transition-colors">
+          Voir toutes les annonces
+        </NuxtLink>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import AnnonceCard from '~/components/annonces/AnnonceCard.vue';
+import { ref, onMounted } from 'vue';
+import { useAnnonces } from '~/composables/useAnnonces';
+import AnnonceCard from '../annonces/AnnonceCard.vue';
 
-// Données mockées pour les annonces récentes
-// Dans une vraie application, ces données viendraient de l'API Directus
-const recentAnnonces = [
-  {
-    id: 1,
-    title: 'Maison contemporaine avec vue',
-    location: 'Aix-en-Provence, 13100',
-    price: 390000,
-    rental_income: 1200,
-    surface: 140,
-    bedrooms: 4,
-    created_at: '2025-03-01',
-    image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    featured: true
-  },
-  {
-    id: 2,
-    title: 'Appartement T3 centre-ville',
-    location: 'Lyon, 69002',
-    price: 245000,
-    rental_income: 950,
-    surface: 68,
-    bedrooms: 2,
-    created_at: '2025-03-02',
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 3,
-    title: 'Immeuble de rapport 4 appartements',
-    location: 'Nantes, 44000',
-    price: 620000,
-    rental_income: 2800,
-    surface: 320,
-    bedrooms: 8,
-    created_at: '2025-03-03',
-    image: 'https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-  }
-];
+// Utiliser le composable useAnnonces 
+const { annonces, loading, error, fetchRecentAnnonces } = useAnnonces();
+
+// Charger les annonces au montage du composant
+onMounted(() => {
+  fetchRecentAnnonces(9);
+});
 </script>

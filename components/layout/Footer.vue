@@ -1,10 +1,10 @@
 <template>
-  <footer class="bg-gray-900 text-white py-10">
+  <footer class="bg-gray-800 text-white py-10">
     <div class="container mx-auto px-4">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
         <!-- À propos -->
         <div>
-          <h3 class="text-xl font-semibold mb-4">Ma Maison Rapporte</h3>
+          <h3 class="text-gray-400 text-xl font-semibold mb-4">MMR - Ma Maison Rapporte</h3>
           <p class="text-gray-400">
             Le portail des annonces immobilières avec un potentiel locatif.
           </p>
@@ -12,7 +12,7 @@
 
         <!-- Liens rapides -->
         <div>
-          <h3 class="text-xl font-semibold mb-4">Liens rapides</h3>
+          <h3 class="text-gray-400 text-xl font-semibold mb-4">Liens rapides</h3>
           <ul class="space-y-2 text-gray-400">
             <li><NuxtLink to="/" class="hover:text-white">Accueil</NuxtLink></li>
             <li><NuxtLink to="/annonces" class="hover:text-white">Annonces</NuxtLink></li>
@@ -23,7 +23,7 @@
 
         <!-- Pages légales -->
         <div>
-          <h3 class="text-xl font-semibold mb-4">Informations légales</h3>
+          <h3 class="text-gray-400 text-xl font-semibold mb-4">Informations légales</h3>
           <ul class="space-y-2 text-gray-400">
             <li><NuxtLink to="/legal/mentions-legales" class="hover:text-white">Mentions légales</NuxtLink></li>
             <li><NuxtLink to="/legal/cgv" class="hover:text-white">CGV / CGU</NuxtLink></li>
@@ -34,7 +34,7 @@
 
         <!-- Contact et réseaux sociaux -->
         <div>
-          <h3 class="text-xl font-semibold mb-4">Nous contacter</h3>
+          <h3 class="text-gray-400 text-xl font-semibold mb-4">Nous contacter</h3>
           <ul class="space-y-2 text-gray-400">
             <li>contact@ma-maison-rapporte.fr</li>
             <li>+33 06 67 24 42 89</li>

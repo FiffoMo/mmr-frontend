@@ -1,0 +1,284 @@
+<!-- pages/recherche.vue -->
+<template>
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Résultats de recherche</h1>
+    
+    <!-- Formulaire de recherche avancée -->
+    <div class="bg-gray-50 p-6 rounded-lg mb-8">
+      <h2 class="text-xl font-semibold mb-4">Affiner votre recherche</h2>
+      
+      <form @submit.prevent="rechercher" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-gray-700 mb-1">Type de bien</label>
+          <select v-model="filtres.type" class="w-full border rounded p-2">
+            <option value="">Tous les types</option>
+            <option value="maisons">Maisons</option>
+            <option value="appartements">Appartements</option>
+            <option value="immeubles">Immeubles</option>
+            <option value="constructions">Constructions</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-gray-700 mb-1">Prix max</label>
+          <input 
+            type="number" 
+            v-model="filtres.prix_max" 
+            class="w-full border rounded p-2" 
+            placeholder="Prix maximum"
+          />
+        </div>
+        
+        <div>
+          <label class="block text-gray-700 mb-1">Surface min</label>
+          <input 
+            type="number" 
+            v-model="filtres.surface_min" 
+            class="w-full border rounded p-2" 
+            placeholder="Surface minimale (m²)"
+          />
+        </div>
+        
+        <div>
+          <label class="block text-gray-700 mb-1">Chambres min</label>
+          <input 
+            type="number" 
+            v-model="filtres.chambres_min" 
+            class="w-full border rounded p-2" 
+            placeholder="Nombre de chambres min"
+          />
+        </div>
+        
+        <div>
+          <label class="block text-gray-700 mb-1">Rentabilité min (%)</label>
+          <input 
+            type="number" 
+            v-model="filtres.rentabilite_min" 
+            class="w-full border rounded p-2"
+            step="0.1" 
+            placeholder="Rentabilité minimale"
+          />
+        </div>
+        
+        <div>
+          <label class="block text-gray-700 mb-1">Localisation</label>
+          <input 
+            type="text" 
+            v-model="filtres.localisation" 
+            class="w-full border rounded p-2" 
+            placeholder="Ville ou code postal"
+          />
+        </div>
+        
+        <div class="md:col-span-3 flex justify-end">
+          <button 
+            type="submit" 
+            class="bg-cyan-500 text-white px-6 py-2 rounded hover:bg-cyan-600 transition-colors"
+          >
+            Rechercher
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Résultats et options de tri -->
+    <div class="mb-6 flex justify-between items-center">
+      <p class="text-gray-600">
+        {{ annonces.length }} résultat{{ annonces.length !== 1 ? 's' : '' }} trouvé{{ annonces.length !== 1 ? 's' : '' }}
+      </p>
+      
+      <div class="flex items-center">
+        <label class="mr-2">Trier par:</label>
+        <select v-model="sortOption" class="border rounded px-3 py-2">
+          <option value="date-desc">Plus récentes</option>
+          <option value="date-asc">Plus anciennes</option>
+          <option value="prix-asc">Prix croissant</option>
+          <option value="prix-desc">Prix décroissant</option>
+          <option value="rentabilite-desc">Meilleure rentabilité</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- Liste des annonces -->
+    <div v-if="sortedAnnonces.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <AnnonceCard 
+        v-for="annonce in sortedAnnonces" 
+        :key="annonce.id" 
+        :annonce="annonce"
+      />
+    </div>
+    
+    <!-- Message si aucun résultat -->
+    <div v-else class="bg-gray-100 p-8 rounded-lg text-center">
+      <p class="text-gray-600">Aucune annonce ne correspond à vos critères de recherche.</p>
+      <button 
+        @click="reinitialiserRecherche" 
+        class="mt-4 text-cyan-500 hover:underline"
+      >
+        Réinitialiser les filtres
+      </button>
+    </div>
+  </div>
+</template>
+
+<script>
+import AnnonceCard from '~/components/annonces/AnnonceCard.vue';
+
+export default {
+  components: {
+    AnnonceCard
+  },
+  
+  data() {
+    return {
+      annonces: [],
+      filtres: {
+        type: '',
+        prix_max: null,
+        surface_min: null,
+        chambres_min: null,
+        rentabilite_min: null,
+        localisation: ''
+      },
+      sortOption: 'date-desc',
+      loading: true,
+      error: null
+    }
+  },
+  
+  computed: {
+    sortedAnnonces() {
+      const annonces = [...this.annonces];
+      
+      switch(this.sortOption) {
+        case 'date-desc':
+          return annonces.sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation));
+        case 'date-asc':
+          return annonces.sort((a, b) => new Date(a.date_creation) - new Date(b.date_creation));
+        case 'prix-asc':
+          return annonces.sort((a, b) => a.prix - b.prix);
+        case 'prix-desc':
+          return annonces.sort((a, b) => b.prix - a.prix);
+        case 'rentabilite-desc':
+          return annonces.sort((a, b) => b.rentabilite - a.rentabilite);
+        default:
+          return annonces;
+      }
+    }
+  },
+  
+  mounted() {
+    // Récupérer les paramètres de recherche depuis l'URL si disponibles
+    const query = this.$route.query;
+    
+    this.filtres = {
+      type: query.type || '',
+      prix_max: query.prix_max ? Number(query.prix_max) : null,
+      surface_min: query.surface_min ? Number(query.surface_min) : null,
+      chambres_min: query.chambres_min ? Number(query.chambres_min) : null,
+      rentabilite_min: query.rentabilite_min ? Number(query.rentabilite_min) : null,
+      localisation: query.localisation || ''
+    };
+    
+    this.rechercher();
+  },
+  
+  methods: {
+    async rechercher() {
+      try {
+        this.loading = true;
+        
+        // Construire les paramètres de requête pour Directus
+        const queryParams = new URLSearchParams();
+        
+        // Ajouter les champs à récupérer
+        queryParams.append('fields', '*,images.*');
+        
+        // Construire le filtre
+        let filter = {};
+        
+        if (this.filtres.type) {
+          filter.type = { _eq: this.filtres.type };
+        }
+        
+        if (this.filtres.prix_max) {
+          filter.prix = { _lte: this.filtres.prix_max };
+        }
+        
+        if (this.filtres.surface_min) {
+          filter.surface = { _gte: this.filtres.surface_min };
+        }
+        
+        if (this.filtres.chambres_min) {
+          filter.chambres = { _gte: this.filtres.chambres_min };
+        }
+        
+        if (this.filtres.rentabilite_min) {
+          filter.rentabilite = { _gte: this.filtres.rentabilite_min };
+        }
+        
+        if (this.filtres.localisation) {
+          filter._or = [
+            { ville: { _contains: this.filtres.localisation } },
+            { code_postal: { _contains: this.filtres.localisation } },
+            { adresse: { _contains: this.filtres.localisation } }
+          ];
+        }
+        
+        // Ajouter le filtre à la requête
+        if (Object.keys(filter).length > 0) {
+          queryParams.append('filter', JSON.stringify(filter));
+        }
+        
+        // Récupération des annonces depuis Directus
+        const { default: fetch } = await import('node-fetch');
+        const directusUrl = 'http://localhost:8055';
+        const response = await fetch(`${directusUrl}/items/annonces?${queryParams.toString()}`);
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des annonces');
+        }
+        
+        const data = await response.json();
+        this.annonces = data.data;
+        
+        // Mettre à jour l'URL avec les paramètres de recherche
+        this.updateUrl();
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        this.error = error.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    updateUrl() {
+      // Mettre à jour l'URL avec les paramètres de recherche actuels
+      const query = {};
+      
+      if (this.filtres.type) query.type = this.filtres.type;
+      if (this.filtres.prix_max) query.prix_max = this.filtres.prix_max;
+      if (this.filtres.surface_min) query.surface_min = this.filtres.surface_min;
+      if (this.filtres.chambres_min) query.chambres_min = this.filtres.chambres_min;
+      if (this.filtres.rentabilite_min) query.rentabilite_min = this.filtres.rentabilite_min;
+      if (this.filtres.localisation) query.localisation = this.filtres.localisation;
+      
+      this.$router.push({ path: '/recherche', query });
+    },
+    
+    reinitialiserRecherche() {
+      this.filtres = {
+        type: '',
+        prix_max: null,
+        surface_min: null,
+        chambres_min: null,
+        rentabilite_min: null,
+        localisation: ''
+      };
+      
+      this.rechercher();
+    }
+  }
+}
+</script>

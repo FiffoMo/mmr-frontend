@@ -9,11 +9,11 @@
           v-for="plan in plans" 
           :key="plan.id" 
           class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
-          :class="{ 'border-2 border-blue-500': plan.popular }"
+          :class="{ 'border-2 border-cyan-500': plan.popular }"
         >
           <div 
             v-if="plan.popular" 
-            class="bg-blue-500 text-white py-1 text-center text-sm font-semibold"
+            class="bg-cyan-500 text-white py-1 text-center text-sm font-semibold"
           >
             Le plus populaire
           </div>
@@ -42,7 +42,7 @@
             
             <button 
               class="w-full py-2 px-4 rounded-md transition-colors"
-              :class="plan.popular ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'"
+              :class="plan.popular ? 'bg-cyan-500 hover:bg-cyan-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'"
             >
               Choisir ce forfait
             </button>

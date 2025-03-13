@@ -6,32 +6,32 @@
     <nav class="p-4">
       <ul class="space-y-2">
         <li>
-          <NuxtLink to="/mon-compte" class="block p-2 rounded hover:bg-gray-100" exact-active-class="bg-blue-100 text-blue-700">
+          <NuxtLink to="/mon-compte" class="block p-2 rounded hover:bg-gray-100" exact-active-class="bg-cyan-100 text-blue-700">
             Tableau de bord
           </NuxtLink>
         </li>
         <li>
-          <NuxtLink to="/mon-compte/annonces" class="block p-2 rounded hover:bg-gray-100" active-class="bg-blue-100 text-blue-700">
+          <NuxtLink to="/mon-compte/annonces" class="block p-2 rounded hover:bg-gray-100" active-class="bg-cyan-100 text-blue-700">
             Mes annonces
           </NuxtLink>
         </li>
         <li>
-          <NuxtLink to="/mon-compte/publicites" class="block p-2 rounded hover:bg-gray-100" active-class="bg-blue-100 text-blue-700">
+          <NuxtLink to="/mon-compte/publicites" class="block p-2 rounded hover:bg-gray-100" active-class="bg-cyan-100 text-blue-700">
             Mes publicités
           </NuxtLink>
         </li>
         <li>
-          <NuxtLink to="/mon-compte/commandes" class="block p-2 rounded hover:bg-gray-100" active-class="bg-blue-100 text-blue-700">
+          <NuxtLink to="/mon-compte/commandes" class="block p-2 rounded hover:bg-gray-100" active-class="bg-cyan-100 text-blue-700">
             Mes commandes
           </NuxtLink>
         </li>
         <li>
-          <NuxtLink to="/mon-compte/messages" class="block p-2 rounded hover:bg-gray-100" active-class="bg-blue-100 text-blue-700">
+          <NuxtLink to="/mon-compte/messages" class="block p-2 rounded hover:bg-gray-100" active-class="bg-cyan-100 text-blue-700">
             Messages
           </NuxtLink>
         </li>
         <li>
-          <NuxtLink to="/mon-compte/parametres" class="block p-2 rounded hover:bg-gray-100" active-class="bg-blue-100 text-blue-700">
+          <NuxtLink to="/mon-compte/parametres" class="block p-2 rounded hover:bg-gray-100" active-class="bg-cyan-100 text-blue-700">
             Paramètres
           </NuxtLink>
         </li>

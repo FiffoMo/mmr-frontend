@@ -21,7 +21,7 @@
             <p class="text-xl md:text-2xl mb-8">{{ slide.description }}</p>
             <NuxtLink 
               :to="slide.buttonLink" 
-              class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md text-lg font-medium inline-block"
+              class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-md text-lg font-medium inline-block"
             >
               {{ slide.buttonText }}
             </NuxtLink>
