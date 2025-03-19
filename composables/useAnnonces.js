@@ -95,6 +95,61 @@ export function useAnnonces() {
       loading.value = false;
     }
   };
+
+  /**
+   * Rechercher des annonces avec des filtres
+   */
+  const searchAnnonces = async (searchParams) => {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      console.log("Début recherche avec paramètres:", searchParams);
+      
+      // Construire l'URL avec les paramètres de recherche
+      const queryParams = new URLSearchParams();
+      
+      Object.entries(searchParams).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          queryParams.append(key, value);
+        }
+      });
+      
+      const searchUrl = `/api/annonces/search?${queryParams.toString()}`;
+      console.log("URL de recherche:", searchUrl);
+      
+      const response = await fetch(searchUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Réponse de recherche complète:", data);
+      
+      if (data && data.success) {
+        console.log(`Nombre d'annonces trouvées: ${data.annonces ? data.annonces.length : 0}`);
+        // Forcer la mise à jour de l'état des annonces dans le composable
+        annonces.value = data.annonces || [];
+        console.log("État des annonces après mise à jour:", annonces.value);
+        return data.annonces || [];
+      } else {
+        const errorMsg = data?.error || 'Erreur lors de la recherche';
+        console.error("Erreur de succès:", errorMsg);
+        error.value = errorMsg;
+        annonces.value = []; // Forcer un tableau vide en cas d'erreur
+        return [];
+      }
+    } catch (err) {
+      console.error("Erreur complète:", err);
+      error.value = err.message || 'Erreur lors de la recherche';
+      annonces.value = []; // Forcer un tableau vide en cas d'erreur
+      return [];
+    } finally {
+      loading.value = false;
+    }
+  };
+
   
   return {
     // État
@@ -110,6 +165,7 @@ export function useAnnonces() {
     // Actions
     fetchRecentAnnonces,
     fetchCoupsDeCoeur,
-    fetchAnnonceById
+    fetchAnnonceById,
+    searchAnnonces
   };
 }

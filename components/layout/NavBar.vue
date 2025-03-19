@@ -3,15 +3,14 @@
     <div class="container mx-auto px-4">
       <div class="flex justify-between items-center py-4">
         <!-- Logo -->
-        <NuxtLink to="/" class="text-2xl font-bold text-cyan-500">MMR</NuxtLink>
+        <NuxtLink to="/"><img src="~/assets/images/logo_mmr_150.png" alt="Constructions"></NuxtLink>
 
         <!-- Navigation principale - version desktop -->
         <!-- Navigation -->
         <nav class="hidden md:flex space-x-6">
+          <NuxtLink to="/annonces" class="text-gray-700 hover:text-cyan-600">Tous les biens</NuxtLink>
           <NuxtLink to="/annonces?category=maisons" class="text-gray-700 hover:text-cyan-600">Maisons</NuxtLink>
           <NuxtLink to="/annonces?category=immeubles" class="text-gray-700 hover:text-cyan-600">Immeubles</NuxtLink>
-          <NuxtLink to="/annonces?category=maisons_dhote" class="text-gray-700 hover:text-cyan-600">Maisons d'hôte</NuxtLink>
-          
           <!-- Menu déroulant "Autres" -->
           <div class="relative">
             <button 
@@ -31,13 +30,37 @@
               <NuxtLink to="/annonces?category=appartements" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Appartements</NuxtLink>
               <NuxtLink to="/annonces?category=construction" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Constructions</NuxtLink>
               <NuxtLink to="/annonces?category=demeures" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Demeures</NuxtLink>
+              <NuxtLink to="/annonces?category=maisons_dhote" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Maisons d'hôte</NuxtLink>
             </div>
           </div>
           
           <span class="text-gray-300">|</span>
-          
+          <!-- ajout phil  -->
+          <div class="relative">
+            <button 
+              @click="toggleDropdown" 
+              class="text-gray-700 hover:text-cyan-600 flex items-center"
+            >
+              Services
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div 
+              v-show="isDropdownOpen" 
+              class="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md py-1 z-10"
+              @mouseleave="isDropdownOpen = false"
+            >
+              <NuxtLink to="/about" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">A propos</NuxtLink>
+              <NuxtLink to="/faq" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">FAQ</NuxtLink>
+              <NuxtLink to="/testimonials" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Témoignages</NuxtLink>
+            </div>
+          </div>
+          <!-- fin ajout phil -->
+          <NuxtLink to="/articles" class="text-gray-700 hover:text-cyan-600">Articles utiles</NuxtLink>
           <NuxtLink to="/tarifs" class="text-gray-700 hover:text-cyan-600">Tarifs</NuxtLink>
-          <NuxtLink to="/pub" class="text-gray-700 hover:text-cyan-600">Pub</NuxtLink>
+          <NuxtLink to="/publicite" class="text-gray-700 hover:text-cyan-600">Pub</NuxtLink>
+          <NuxtLink to="/contact" class="text-gray-700 hover:bg-cyan-50">Contact</NuxtLink>
         </nav>
 
         <!-- Actions utilisateur -->
@@ -101,5 +124,11 @@ onMounted(() => {
     }
   });
 });
-
 </script>
+
+<style scoped>
+.nav {
+  position: relative;
+  z-index: 50;
+}
+</style>

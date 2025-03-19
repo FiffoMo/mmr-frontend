@@ -1,7 +1,7 @@
 <template>
   <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
     <div class="relative">
-      <NuxtLink :to="`/detail-annonce-${annonce.id}`">
+      <NuxtLink :to="`/annonces/detail-${annonce.id}`">
         <img 
           v-if="annonce.image_principale"
           :src="`http://localhost:8055/assets/${annonce.image_principale}`"
@@ -39,7 +39,7 @@
         <span class="text-sm bg-cyan-100 text-cyan-800 px-2 py-1 rounded">
           {{ getCategoryLabel(annonce.categorie_annonce) }}
         </span>
-        <NuxtLink :to="`/detail-annonce-${annonce.id}`" class="text-cyan-500 hover:text-cyan-700 font-medium">
+        <NuxtLink :to="`/annonces/detail-${annonce.id}`" class="text-cyan-500 hover:text-cyan-700 font-medium">
           Voir le bien
         </NuxtLink>
       </div>

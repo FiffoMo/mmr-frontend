@@ -4,9 +4,9 @@
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
         <!-- À propos -->
         <div>
-          <h3 class="text-gray-400 text-xl font-semibold mb-4">MMR - Ma Maison Rapporte</h3>
+          <NuxtLink to="/"><img src="~/assets/images/logo_mmr_clair_250.png" alt="Constructions" class="mb-6"></NuxtLink>
           <p class="text-gray-400">
-            Le portail des annonces immobilières avec un potentiel locatif.
+            Le portail des annonces immobilières<br>avec un potentiel locatif.
           </p>
         </div>
 
@@ -63,7 +63,7 @@
       </div>
 
       <div class="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400">
-        <p>© {{ new Date().getFullYear() }} Ma Maison Rapporte. Tous droits réservés.</p>
+        <p>© {{ new Date().getFullYear() }} Ma Maison Rapporte SARL. Tous droits réservés.</p>
       </div>
     </div>
   </footer>

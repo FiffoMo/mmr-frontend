@@ -1,5 +1,5 @@
 <template>
-  <section class="py-16 bg-amber-50">
+  <section class="py-16 bg-zinc-200">
     <div class="container mx-auto px-4">
       <div class="text-center mb-12">
         <h2 class="text-3xl font-bold mb-4">Nos coups de cœur</h2>
