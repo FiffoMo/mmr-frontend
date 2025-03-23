@@ -3,15 +3,15 @@
     <h2 class="text-2xl font-bold text-gray-900 mb-6">Mon profil</h2>
     
     <!-- Message de chargement -->
-    <div v-if="loading" class="text-center py-10">
+    <div v-if="loading || apiLoading" class="text-center py-10">
       <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
       <p class="text-gray-600">Chargement de votre profil...</p>
     </div>
     
     <!-- Message d'erreur -->
-    <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+    <div v-else-if="error || apiError" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
       <p class="font-medium">Une erreur est survenue</p>
-      <p class="text-sm">{{ error }}</p>
+      <p class="text-sm">{{ error || apiError }}</p>
       <button 
         @click="fetchUserProfile" 
         class="mt-2 text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded"
@@ -247,6 +247,9 @@
 </template>
 
 <script>
+import { useDirectusApi } from '@/composables/useDirectusApi';
+import { useAuthStore } from '@/stores/useAuthStore';
+
 export default {
   name: 'ProfileTab',
   
@@ -262,6 +265,27 @@ export default {
   },
   
   emits: ['update-success'],
+  
+  setup() {
+    // Initialiser le service Directus API
+    const { 
+      loading: apiLoading,
+      error: apiError,
+      getUserProfile,
+      updateUserProfile
+    } = useDirectusApi();
+    
+    // Initialiser le store d'authentification
+    const authStore = useAuthStore();
+    
+    return {
+      apiLoading,
+      apiError,
+      getUserProfile,
+      updateUserProfile,
+      authStore
+    };
+  },
   
   data() {
     return {
@@ -304,8 +328,11 @@ export default {
           return this.profileForm.avatar;
         }
         
+        // Récupérer l'URL Directus de la configuration Nuxt
+        const directusUrl = this.$config?.public?.directusUrl || process.env.DIRECTUS_URL || 'http://localhost:8055';
+        
         // Si c'est un ID de fichier Directus
-        return `${this.$config.directusUrl}/assets/${this.profileForm.avatar}`;
+        return `${directusUrl}/assets/${this.profileForm.avatar}`;
       } else if (this.profileForm.avatar_file) {
         // Si c'est un fichier nouvellement téléchargé
         return URL.createObjectURL(this.profileForm.avatar_file);
@@ -318,7 +345,7 @@ export default {
     isClient() {
       // Cette valeur devrait être fournie par le composant parent
       // Par défaut, on considère les userType 1 et 2 comme des clients
-      return this.user && this.user.userType >= 1;
+      return this.userType >= 1;
     }
   },
   
@@ -335,6 +362,9 @@ export default {
   },
   
   mounted() {
+    // Initialiser l'état d'authentification
+    this.authStore.initAuth();
+    
     // Si l'utilisateur n'est pas fourni via les props, le récupérer
     if (!this.user) {
       this.fetchUserProfile();
@@ -348,32 +378,18 @@ export default {
       this.error = null;
       
       try {
-        // À remplacer par l'appel API réel
-        // const response = await this.$axios.$get('/api/users/me');
-        // const userData = response.data;
+        // Utiliser le service API Directus au lieu de la simulation
+        const result = await this.getUserProfile();
+        const userData = result.data;
         
-        // Simulation pour le développement
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const userData = {
-          id: '1',
-          first_name: 'Jean',
-          last_name: 'Dupont',
-          email: 'jean.dupont@example.com',
-          avatar: null,
-          company: 'Immobilier Conseil',
-          phone: '01 23 45 67 89',
-          address: '123 rue de Paris\n75001 Paris',
-          contact_instructions: 'Préférence pour les contacts par email. Disponible par téléphone entre 9h et 18h en semaine.',
-          hide_email: false,
-          hide_phone: true,
-          hide_address: true
-        };
-        
-        this.initializeForm(userData);
+        if (userData) {
+          this.initializeForm(userData);
+        } else {
+          throw new Error('Aucune donnée utilisateur trouvée');
+        }
       } catch (error) {
         console.error('Erreur lors du chargement du profil:', error);
-        this.error = "Impossible de charger votre profil. Veuillez réessayer.";
+        this.error = error.message || "Impossible de charger votre profil. Veuillez réessayer.";
       } finally {
         this.loading = false;
       }
@@ -435,31 +451,55 @@ export default {
       this.saving = true;
       
       try {
-        // Créer un objet FormData pour le téléchargement du fichier
-        const formData = new FormData();
-        Object.keys(this.profileForm).forEach(key => {
-          if (key !== 'avatar_file' && key !== 'avatar') {
-            formData.append(key, this.profileForm[key]);
-          }
-        });
+        let avatarId = this.profileForm.avatar;
         
-        // Ajouter le fichier avatar s'il existe
+        // Si un nouveau fichier a été téléchargé, on l'envoie d'abord
         if (this.profileForm.avatar_file) {
-          formData.append('avatar', this.profileForm.avatar_file);
-        } else if (this.profileForm.avatar === null && this.originalProfile.avatar) {
-          // Cas où l'avatar a été supprimé
-          formData.append('avatar', '');
+          const formData = new FormData();
+          formData.append('file', this.profileForm.avatar_file);
+          
+          // Utiliser l'API Directus pour uploader le fichier
+          const directusUrl = this.$config?.public?.directusUrl || process.env.DIRECTUS_URL || 'http://localhost:8055';
+          const token = this.authStore.token || localStorage.getItem('auth_token');
+          
+          const response = await fetch(`${directusUrl}/files`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          });
+          
+          if (!response.ok) {
+            throw new Error('Erreur lors de l\'upload du fichier');
+          }
+          
+          const result = await response.json();
+          avatarId = result.data.id;
         }
         
-        // À remplacer par l'appel API réel
-        // const response = await this.$axios.$patch('/api/users/me', formData);
+        // Préparer les données à envoyer
+        const userData = {
+          first_name: this.profileForm.first_name,
+          last_name: this.profileForm.last_name,
+          email: this.profileForm.email,
+          avatar: avatarId,
+          company: this.profileForm.company,
+          phone: this.profileForm.phone,
+          address: this.profileForm.address,
+          contact_instructions: this.profileForm.contact_instructions,
+          hide_email: this.profileForm.hide_email,
+          hide_phone: this.profileForm.hide_phone,
+          hide_address: this.profileForm.hide_address
+        };
         
-        // Simulation pour le développement
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Utiliser le service API Directus pour mettre à jour le profil
+        await this.updateUserProfile(userData);
         
         // Mise à jour de l'original après succès
-        this.originalProfile = { ...this.profileForm };
+        this.profileForm.avatar = avatarId;
         this.profileForm.avatar_file = null; // Réinitialiser après le téléchargement
+        this.originalProfile = { ...this.profileForm };
         
         // Émettre l'événement de succès
         this.$emit('update-success', 'Votre profil a été mis à jour avec succès');

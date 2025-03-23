@@ -1,129 +1,132 @@
-// Structure du dossier
-/components
-  /settings
-    ProfileTab.vue       // Informations personnelles
-    NotificationsTab.vue // Préférences de notifications
-    SearchesTab.vue      // Recherches sauvegardées
-    FavoritesTab.vue     // Annonces favorites
-    ListingsTab.vue      // Gestion des annonces (client annonces)
-    AdsTab.vue           // Gestion des publicités (client publicité)
-    MessagesTab.vue      // Messagerie
-/pages
-  settings.vue           // Conteneur principal avec gestion des onglets
-
-// settings.vue (composant principal)
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- En-tête avec le titre et éventuelles informations utilisateur -->
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold text-gray-900">Tableau de bord</h1>
-      <div v-if="user" class="text-sm text-gray-600">
-        Connecté en tant que <span class="font-medium">{{ user.first_name }} {{ user.last_name }}</span>
-      </div>
-    </div>
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Mon espace</h1>
     
     <!-- Message de chargement -->
-    <div v-if="loading" class="text-center py-10">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
-      <p class="text-gray-600">Chargement de vos informations...</p>
+    <div v-if="loading" class="bg-white p-6 rounded-lg shadow-sm mb-6">
+      <div class="flex items-center justify-center py-8">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+      </div>
+      <p class="text-center text-gray-600">Chargement de vos informations...</p>
     </div>
     
     <!-- Message d'erreur -->
-    <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-      <p class="font-medium">Une erreur est survenue</p>
-      <p class="text-sm">{{ error }}</p>
+    <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-6">
+      <h3 class="font-bold">Une erreur est survenue</h3>
+      <p>{{ error }}</p>
       <button 
         @click="fetchUserData" 
-        class="mt-2 text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded"
+        class="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 rounded text-red-800"
       >
         Réessayer
       </button>
     </div>
     
-    <!-- Contenu principal (visible seulement si les données sont chargées) -->
-    <div v-else-if="user">
-      <!-- Tabs de navigation -->
-      <div class="border-b border-gray-200 mb-6">
-        <nav class="-mb-px flex space-x-8 overflow-x-auto">
-          <a 
-            v-for="tab in filteredTabs" 
-            :key="tab.id"
-            :class="[
-              activeTab === tab.id 
-                ? 'border-cyan-500 text-cyan-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer'
-            ]"
-            @click="selectTab(tab.id)"
+    <!-- Contenu principal -->
+    <div v-else>
+      <!-- Menu de navigation horizontal avec groupes -->
+      <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <div class="flex flex-wrap items-center space-x-1 md:space-x-4">
+          <!-- Groupe Profil -->
+          <div class="relative group">
+            <button class="flex items-center px-3 py-2 text-gray-700 font-medium rounded-md hover:bg-gray-50">
+              <span>Profil</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="absolute left-0 top-full z-10 hidden group-hover:block w-40 rounded-md shadow-lg bg-white">
+              <!-- Pont invisible pour maintenir le hover -->
+              <div class="absolute top-0 left-0 h-2 w-full -mt-1"></div>
+              <div class="rounded-md bg-white shadow-xs">
+                <button
+                  v-for="tab in profileTabs"
+                  :key="tab.id"
+                  @click="selectTab(tab.id)"
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  v-bind:class="activeTab === tab.id ? 'bg-cyan-50 text-cyan-700' : ''"
+                >
+                  {{ tab.name }}
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Messages (standalone) -->
+          <button
+            @click="selectTab('messages')"
+            class="flex items-center px-3 py-2 text-gray-700 font-medium rounded-md hover:bg-gray-50"
+            v-bind:class="activeTab === 'messages' ? 'bg-cyan-50 text-cyan-700' : ''"
           >
-            {{ tab.name }}
-            <span v-if="tab.id === 'messages' && unreadMessages > 0" 
-                  class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
-              {{ unreadMessages }}
+            <span class="relative flex items-center">
+              Messages
+              <span 
+                v-if="unreadMessages" 
+                class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 text-cyan-800"
+              >
+                {{ unreadMessages }}
+              </span>
             </span>
-          </a>
-        </nav>
+          </button>
+          
+          <!-- Groupe Mes Achats (visible seulement pour userType >= 1) -->
+          <div v-if="userType >= 1" class="relative group">
+            <button class="flex items-center px-3 py-2 text-gray-700 font-medium rounded-md hover:bg-gray-50">
+              <span>Mes achats</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="absolute left-0 top-full z-10 hidden group-hover:block w-40 rounded-md shadow-lg bg-white">
+              <!-- Pont invisible pour maintenir le hover -->
+              <div class="absolute top-0 left-0 h-2 w-full -mt-1"></div>
+              <div class="rounded-md bg-white shadow-xs">
+                <button
+                  v-for="tab in purchaseTabs"
+                  :key="tab.id"
+                  @click="selectTab(tab.id)"
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  v-bind:class="activeTab === tab.id ? 'bg-cyan-50 text-cyan-700' : ''"
+                >
+                  {{ tab.name }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       
-      <!-- Contenu des tabs -->
-      <div class="bg-white shadow rounded-lg">
-        <ProfileTab 
-          v-if="activeTab === 'profile'" 
+      <!-- Contenu de l'onglet actif -->
+      <div class="bg-white rounded-lg shadow-sm">
+        <component 
+          :is="getComponentForTab(activeTab)" 
           :user="user" 
-          :userType="userType"
-          @update-success="handleUpdateSuccess" 
-        /> 
-        <NotificationsTab 
-          v-if="activeTab === 'notifications'" 
-          :user-id="user.id" 
-          @update-success="handleUpdateSuccess" 
-        />
-        <SearchesTab 
-          v-if="activeTab === 'savedSearches'" 
-          :user-id="user.id" 
-        />
-        <FavoritesTab 
-          v-if="activeTab === 'favorites'" 
-          :user-id="user.id" 
-        />
-        <ListingsTab 
-          v-if="activeTab === 'listings' && userType >= 1" 
-          :user-id="user.id" 
-        />
-        <AdsTab 
-          v-if="activeTab === 'ads' && userType >= 2" 
-          :user-id="user.id" 
-        />
-        <MessagesTab 
-          v-if="activeTab === 'messages'" 
-          :user-id="user.id" 
-          @messages-read="updateUnreadCount" 
-        />
-        <OrdersTab 
-          v-if="activeTab === 'orders'" 
-          :user-id="user.id" 
+          :user-type="userType"
+          @update-success="handleUpdateSuccess"
+          @update-unread-count="updateUnreadCount"
         />
       </div>
     </div>
-
-    <!-- Message si non connecté (à gérer avec l'authentification plus tard) -->
-    <div v-else class="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
-      <p class="font-medium">Accès restreint</p>
-      <p class="text-sm">Vous devez être connecté pour accéder à votre tableau de bord.</p>
-      <NuxtLink to="/connexion" class="mt-2 inline-block text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-3 py-1 rounded">
-        Se connecter
-      </NuxtLink>
-    </div>
-
-    <!-- Notification toast (pour les messages de succès) -->
-    <div v-if="notification.show" 
-         class="fixed bottom-5 right-5 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded shadow-lg transition-opacity duration-300"
-         :class="notification.show ? 'opacity-100' : 'opacity-0'">
-      <p>{{ notification.message }}</p>
+    
+    <!-- Notification toast -->
+    <div 
+      v-if="notification.show" 
+      class="fixed bottom-4 right-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md shadow-lg transition-opacity"
+    >
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <p class="text-sm font-medium">{{ notification.message }}</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
-  
+
 <script>
 import ProfileTab from '@/components/settings/ProfileTab.vue';
 import NotificationsTab from '@/components/settings/NotificationsTab.vue';
@@ -133,6 +136,9 @@ import ListingsTab from '@/components/settings/ListingsTab.vue';
 import AdsTab from '@/components/settings/AdsTab.vue';
 import MessagesTab from '@/components/settings/MessagesTab.vue';
 import OrdersTab from '@/components/settings/OrdersTab.vue';
+import HighlightTab from '@/components/settings/HighlightTab.vue';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { useDirectusApi } from '@/composables/useDirectusApi';
 
 export default {
   name: 'SettingsPage',
@@ -145,13 +151,33 @@ export default {
     ListingsTab,
     AdsTab,
     MessagesTab,
-    OrdersTab
+    OrdersTab,
+    HighlightTab
+  },
+  
+  setup() {
+    // Initialiser le store d'authentification
+    const authStore = useAuthStore();
+    
+    // Initialiser le service Directus API
+    const { 
+      loading: apiLoading,
+      error: apiError,
+      getUserProfile
+    } = useDirectusApi();
+    
+    return {
+      authStore,
+      apiLoading,
+      apiError,
+      getUserProfile
+    };
   },
   
   data() {
     return {
       // États de l'interface
-      loading: false, // Mettre à false pour éviter l'erreur immédiate
+      loading: false,
       error: null,
       
       // Onglet actif
@@ -159,12 +185,12 @@ export default {
       
       // Données utilisateur
       user: { 
-        id: '1',  // Valeur temporaire pour développement
+        id: '1',
         first_name: 'Utilisateur',
         last_name: 'Test'
       },
-      userType: 2, // Valeur temporaire pour développement
-      unreadMessages: 3, // Valeur temporaire pour développement
+      userType: 0,
+      unreadMessages: 0,
       
       // Notification toast
       notification: {
@@ -173,38 +199,57 @@ export default {
         timer: null
       },
       
-      // Onglets disponibles
-      availableTabs: [
+      // Groupes d'onglets
+      profileTabs: [
         { id: 'profile', name: 'Profil' },
         { id: 'notifications', name: 'Notifications' },
         { id: 'savedSearches', name: 'Recherches' },
-        { id: 'favorites', name: 'Favoris' },
-        { id: 'messages', name: 'Messagerie' },
-        { id: 'orders', name: 'Mes commandes' }, // Nouvel onglet
+        { id: 'favorites', name: 'Favoris' }
+      ],
+      
+      purchaseTabs: [
+        { id: 'orders', name: 'Mes commandes' },
         { id: 'listings', name: 'Mes annonces' },
+        { id: 'highlight', name: 'Mise en avant' },
         { id: 'ads', name: 'Mes publicités' }
       ]
     };
   },
   
   computed: {
-    // Filtre les onglets selon le type d'utilisateur
-    filteredTabs() {
-      return this.availableTabs.filter(tab => {
-        if (tab.id === 'listings' && this.userType < 1) return false;
+    // Filtre les onglets d'achat selon le type d'utilisateur
+    filteredPurchaseTabs() {
+      return this.purchaseTabs.filter(tab => {
         if (tab.id === 'ads' && this.userType < 2) return false;
         return true;
       });
+    },
+    
+    // Tous les onglets disponibles (pour vérification URL)
+    allTabs() {
+      const tabs = [...this.profileTabs, { id: 'messages', name: 'Messagerie' }];
+      if (this.userType >= 1) {
+        tabs.push(...this.filteredPurchaseTabs);
+      }
+      return tabs;
     }
   },
   
   mounted() {
+    // TEMPORAIRE: Définir un token de test pour Directus (à remplacer par un vrai système de connexion)
+    // localStorage.setItem('auth_token', 'ZYfCrLEDGsOa4ue5T9hvUf4rBg2z6_Qs');
+    // console.log('Tentative de récupération du profil utilisateur');
+    // const result = await this.getUserProfile();
+    // console.log('Résultat:', result);
+    
+    // Initialiser l'état d'authentification
+    this.authStore.initAuth();
+    
     // Vérifier si un onglet spécifique est demandé dans l'URL
     this.checkUrlTab();
     
-    // Pour le moment, nous utilisons des données fictives
-    // Décommenter la ligne suivante lorsque l'API sera prête:
-    // this.fetchUserData();
+    // Récupérer les données utilisateur
+    this.fetchUserData();
   },
   
   methods: {
@@ -214,20 +259,33 @@ export default {
       this.error = null;
       
       try {
-        // Pour l'instant, nous simulons un appel API réussi
-        // À remplacer par une véritable implémentation d'API plus tard
+        // Vérifier si l'utilisateur est authentifié
+        if (!this.authStore.isAuthenticated) {
+          // TEMPORAIRE: Simuler une connexion pour le développement
+          // Dans une vraie application, rediriger vers la page de connexion
+          this.user = {
+            id: '1',
+            first_name: 'Utilisateur',
+            last_name: 'Test',
+            type: 2 // Type 2 pour voir tous les onglets pendant le développement
+          };
+          this.userType = 2;
+          this.loading = false;
+          return;
+        }
         
-        // Exemple d'appel à axios (à ajuster selon votre configuration)
-        /*
-        const response = await this.$axios.$get('/api/users/me');
-        this.user = response.data;
-        await this.determineUserType();
-        await this.fetchUnreadMessagesCount();
-        */
+        // Récupérer le profil utilisateur depuis Directus
+        const result = await this.getUserProfile();
         
-        // Simulation d'un délai pour le développement
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+        if (result.data) {
+          this.user = result.data;
+          this.userType = result.data.type || 0;
+          
+          // Récupérer le nombre de messages non lus (à implémenter)
+          await this.fetchUnreadMessagesCount();
+        } else {
+          throw new Error("Aucune donnée utilisateur trouvée");
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des données utilisateur:', error);
         this.error = "Impossible de charger vos informations. Veuillez réessayer.";
@@ -237,20 +295,31 @@ export default {
     },
     
     // Version simplifiée pour le développement
-    async determineUserType() {
-      // À implémenter plus tard avec l'API réelle
-      console.log('Détermination du type d\'utilisateur...');
-    },
-    
-    // Version simplifiée pour le développement
     async fetchUnreadMessagesCount() {
       // À implémenter plus tard avec l'API réelle
-      console.log('Récupération du nombre de messages non lus...');
+      this.unreadMessages = 3; // Valeur temporaire pour développement
     },
     
     // Mettre à jour le compteur de messages non lus
     updateUnreadCount(count) {
       this.unreadMessages = count;
+    },
+    
+    // Obtenir le composant correspondant à l'onglet actif
+    getComponentForTab(tabId) {
+      const componentMap = {
+        'profile': ProfileTab,
+        'notifications': NotificationsTab,
+        'savedSearches': SearchesTab,
+        'favorites': FavoritesTab,
+        'messages': MessagesTab,
+        'listings': ListingsTab,
+        'orders': OrdersTab,
+        'ads': AdsTab,
+        'highlight': HighlightTab
+      };
+      
+      return componentMap[tabId] || ProfileTab;
     },
     
     // Sélectionner un onglet et mettre à jour l'URL
@@ -267,7 +336,11 @@ export default {
     checkUrlTab() {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
-      if (tab && this.availableTabs.some(t => t.id === tab)) {
+      
+      // Vérifier si l'onglet existe dans nos différents groupes
+      const allTabIds = this.allTabs.map(tab => tab.id);
+      
+      if (tab && allTabIds.includes(tab)) {
         this.activeTab = tab;
       }
     },
