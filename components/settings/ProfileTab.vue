@@ -1,219 +1,481 @@
 <template>
-    <div class="p-6">
-      <h2 class="text-xl font-semibold text-gray-900 mb-4">Informations personnelles</h2>
-      <form @submit.prevent="updateProfile" class="space-y-6 bg-gray-100 p-6 rounded-lg">
-        <!-- Prénom et Nom sur la même ligne -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label for="firstName" class="block text-sm font-medium text-gray-700">Prénom</label>
+  <div class="p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-6">Mon profil</h2>
+    
+    <!-- Message de chargement -->
+    <div v-if="loading" class="text-center py-10">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
+      <p class="text-gray-600">Chargement de votre profil...</p>
+    </div>
+    
+    <!-- Message d'erreur -->
+    <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+      <p class="font-medium">Une erreur est survenue</p>
+      <p class="text-sm">{{ error }}</p>
+      <button 
+        @click="fetchUserProfile" 
+        class="mt-2 text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded"
+      >
+        Réessayer
+      </button>
+    </div>
+    
+    <!-- Formulaire de profil -->
+    <form v-else @submit.prevent="saveProfile" class="space-y-6 bg-slate-200 p-6 rounded-lg border border-gray-200 shadow-sm">
+      <!-- Avatar / Logo -->
+      <div class="flex flex-col md:flex-row items-start md:items-center gap-6 pb-6 border-b border-gray-4s00">
+        <div class="flex-shrink-0">
+          <div class="relative">
+            <img 
+              v-if="profileForm.avatar" 
+              :src="avatarUrl" 
+              alt="Avatar" 
+              class="h-24 w-24 rounded-full object-cover border border-gray-200"
+            />
+            <div 
+              v-else 
+              class="h-24 w-24 rounded-full bg-white flex items-center justify-center text-gray-400"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <button 
+              type="button"
+              @click="$refs.fileInput.click()"
+              class="absolute bottom-0 right-0 bg-cyan-600 text-white rounded-full p-1 hover:bg-cyan-700 shadow-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
             <input 
-              type="text" 
-              id="firstName" 
-              v-model="profile.firstName" 
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500"
+              ref="fileInput" 
+              type="file" 
+              accept="image/*" 
+              class="hidden" 
+              @change="handleFileUpload"
             />
           </div>
+          <button 
+            v-if="profileForm.avatar" 
+            type="button"
+            @click="removeAvatar"
+            class="mt-2 text-xs text-gray-500 hover:text-red-600"
+          >
+            Supprimer l'image
+          </button>
+        </div>
+        <div class="flex-grow">
+          <h3 class="text-lg font-medium text-gray-900 mb-1">Photo de profil</h3>
+          <p class="text-sm text-gray-500 mb-2">
+            Cette image sera affichée sur votre profil public et vos annonces.
+          </p>
+          <p class="text-xs text-gray-400">
+            Formats acceptés: JPG, PNG. Taille maximum: 2 Mo.
+          </p>
+        </div>
+      </div>
+      
+      <!-- Informations personnelles -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-medium text-gray-900">Informations personnelles</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Prénom -->
           <div>
-            <label for="lastName" class="block text-sm font-medium text-gray-700">Nom</label>
-            <input 
-              type="text" 
-              id="lastName" 
-              v-model="profile.lastName" 
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500"
+            <label for="first-name" class="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+            <input
+              id="first-name"
+              v-model="profileForm.first_name"
+              type="text"
+              required
+              class="block w-full h-10 px-3 px-3 rounded-md border-gray-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+            />
+          </div>
+          
+          <!-- Nom -->
+          <div>
+            <label for="last-name" class="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+            <input
+              id="last-name"
+              v-model="profileForm.last_name"
+              type="text"
+              required
+              class="block w-full h-10 px-3 px-3 rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+            />
+          </div>
+          
+          <!-- Entreprise (Nouveau champ) -->
+          <div class="md:col-span-2">
+            <label for="company" class="block text-sm font-medium text-gray-700 mb-1">Entreprise</label>
+            <input
+              id="company"
+              v-model="profileForm.company"
+              type="text"
+              class="block w-full h-10 px-3 rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+              placeholder="Nom de votre entreprise (facultatif)"
             />
           </div>
         </div>
+      </div>
+      
+      <!-- Coordonnées -->
+      <div class="space-y-4 pt-6 border-t border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Coordonnées</h3>
         
         <!-- Email -->
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-          <input 
-            type="email" 
-            id="email" 
-            v-model="profile.email" 
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500"
+        <div class="space-y-2">
+          <div class="flex justify-between">
+            <label for="email" class="block text-sm font-medium text-gray-700">Adresse email *</label>
+            <div class="flex items-center">
+              <input 
+                id="hide-email" 
+                v-model="profileForm.hide_email" 
+                type="checkbox" 
+                class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+              />
+              <label for="hide-email" class="ml-2 text-xs text-gray-500">Masquer au public</label>
+            </div>
+          </div>
+          <input
+            id="email"
+            v-model="profileForm.email"
+            type="email"
+            :required="isClient"
+            class="block w-full h-10 px-3 rounded-md border-gray-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
           />
+          <p v-if="isClient" class="mt-1 text-xs text-red-500">
+            * Obligatoire pour les clients avec forfaits
+          </p>
         </div>
         
         <!-- Téléphone -->
-        <div>
-          <label for="phone" class="block text-sm font-medium text-gray-700">Téléphone</label>
-          <input 
-            type="tel" 
-            id="phone" 
-            v-model="profile.phone" 
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500"
-          />
-        </div>
-        
-        <!-- Changer mot de passe -->
-        <div class="border-t border-gray-200 pt-4">
-          <h3 class="text-lg font-medium text-gray-900 mb-3">Changer le mot de passe</h3>
-          <div class="space-y-4">
-            <div>
-              <label for="currentPassword" class="block text-sm font-medium text-gray-700">Mot de passe actuel</label>
+        <div class="space-y-2">
+          <div class="flex justify-between">
+            <label for="phone" class="block text-sm font-medium text-gray-700">Téléphone</label>
+            <div class="flex items-center">
               <input 
-                type="password" 
-                id="currentPassword" 
-                v-model="passwordForm.current" 
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500"
+                id="hide-phone" 
+                v-model="profileForm.hide_phone" 
+                type="checkbox" 
+                class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
               />
-            </div>
-            <div>
-              <label for="newPassword" class="block text-sm font-medium text-gray-700">Nouveau mot de passe</label>
-              <input 
-                type="password" 
-                id="newPassword" 
-                v-model="passwordForm.new" 
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500"
-              />
-            </div>
-            <div>
-              <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirmer le mot de passe</label>
-              <input 
-                type="password" 
-                id="confirmPassword" 
-                v-model="passwordForm.confirm" 
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500"
-              />
+              <label for="hide-phone" class="ml-2 text-xs text-gray-500">Masquer au public</label>
             </div>
           </div>
+          <input
+            id="phone"
+            v-model="profileForm.phone"
+            type="tel"
+            :required="isClient"
+            class="block h-10 px-3 w-full rounded-md border-gray-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+            :placeholder="isClient ? 'Votre numéro de téléphone' : 'Votre numéro de téléphone (facultatif)'"
+          />
+          <p v-if="isClient" class="mt-1 text-xs text-red-500">
+            * Obligatoire pour les clients avec forfaits
+          </p>
         </div>
         
-        <!-- Boutons -->
-        <div class="flex justify-end space-x-3">
-          <button 
-            type="button" 
-            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            @click="resetForm"
-          >
-            Annuler
-          </button>
-          <button 
-            type="submit" 
-            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cyan-500 hover:bg-cyan-700"
-          >
-            Enregistrer
-          </button>
+        <!-- Adresse -->
+        <div class="space-y-2">
+          <div class="flex justify-between">
+            <label for="address" class="block text-sm font-medium text-gray-700">Adresse</label>
+            <div class="flex items-center">
+              <input 
+                id="hide-address" 
+                v-model="profileForm.hide_address" 
+                type="checkbox" 
+                class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+              />
+              <label for="hide-address" class="ml-2 text-xs text-gray-500">Masquer au public</label>
+            </div>
+          </div>
+          <textarea
+            id="address"
+            v-model="profileForm.address"
+            rows="3"
+            :required="isClient"
+            class="block pt-3 px-3 w-full rounded-md border-gray-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+            :placeholder="isClient ? 'Votre adresse' : 'Votre adresse (facultative)'"
+          ></textarea>
+          <p v-if="isClient" class="mt-1 text-xs text-red-500">
+            * Obligatoire pour les clients avec forfaits
+          </p>
         </div>
-      </form>
-    </div>
-  </template>
+        
+        <!-- Comment me contacter (Nouveau champ) -->
+        <div class="space-y-2">
+          <label for="contact-instructions" class="block text-sm font-medium text-gray-700">Comment me contacter ?</label>
+          <textarea
+            id="contact-instructions"
+            v-model="profileForm.contact_instructions"
+            rows="3"
+            class="block pt-3 px-3 w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+            placeholder="Instructions spécifiques pour vous contacter (facultatif)"
+          ></textarea>
+          <p class="text-xs text-gray-500">
+            Vous pouvez préciser ici vos préférences de contact (horaires, méthode privilégiée, etc.)
+          </p>
+        </div>
+      </div>
+      
+      <!-- Boutons d'action -->
+      <div class="flex justify-end pt-6 border-t border-gray-200">
+        <button
+          type="button"
+          @click="resetForm"
+          class="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 mr-3"
+        >
+          Annuler
+        </button>
+        <button
+          type="submit"
+          :disabled="saving"
+          class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 flex items-center"
+        >
+          <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Enregistrer
+        </button>
+      </div>
+    </form>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'ProfileTab',
   
-  <script>
-  export default {
-    name: 'ProfileTab',
-    
-    emits: ['update-success'],
-    
-    data() {
-      return {
-        profile: {
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: ''
-        },
+  props: {
+    user: {
+      type: Object,
+      default: null
+    },
+    userType: {
+      type: Number,
+      default: 0
+    }
+  },
+  
+  emits: ['update-success'],
+  
+  data() {
+    return {
+      loading: false,
+      saving: false,
+      error: null,
+      
+      // Formulaire de profil
+      profileForm: {
+        // Champs de base
+        first_name: '',
+        last_name: '',
+        email: '',
         
-        // Formulaire de changement de mot de passe
-        passwordForm: {
-          current: '',
-          new: '',
-          confirm: ''
-        },
+        // Nouveaux champs
+        avatar: null,
+        avatar_file: null, // Pour le téléchargement du fichier
+        company: '',
+        phone: '',
+        address: '',
+        contact_instructions: '',
         
-        // État de chargement
-        loading: false
-      };
+        // Options de confidentialité
+        hide_email: false,
+        hide_phone: false,
+        hide_address: false
+      },
+      
+      // Sauvegarde du profil original pour pouvoir annuler les modifications
+      originalProfile: null
+    };
+  },
+  
+  computed: {
+    // URL de l'avatar (pour l'affichage)
+    avatarUrl() {
+      if (this.profileForm.avatar && typeof this.profileForm.avatar === 'string') {
+        // Si c'est une URL directe de Directus
+        if (this.profileForm.avatar.startsWith('http')) {
+          return this.profileForm.avatar;
+        }
+        
+        // Si c'est un ID de fichier Directus
+        return `${this.$config.directusUrl}/assets/${this.profileForm.avatar}`;
+      } else if (this.profileForm.avatar_file) {
+        // Si c'est un fichier nouvellement téléchargé
+        return URL.createObjectURL(this.profileForm.avatar_file);
+      }
+      
+      return null;
     },
     
-    created() {
-      // Charger les données du profil au montage du composant
-      this.fetchProfile();
-    },
-    
-    methods: {
-      // Récupération des données du profil
-      async fetchProfile() {
-        this.loading = true;
-        
-        try {
-          // Dans un cas réel, ce serait un appel API
-          // const response = await api.getProfile();
-          // this.profile = response;
-          
-          // Pour l'exemple, nous utilisons des données fictives
-          this.profile = {
-            firstName: 'Jean',
-            lastName: 'Dupont',
-            email: 'jean.dupont@example.com',
-            phone: '06 12 34 56 78'
-          };
-        } catch (error) {
-          console.error('Erreur lors du chargement du profil:', error);
-        } finally {
-          this.loading = false;
+    // Détermine si l'utilisateur est un client (avec forfaits)
+    isClient() {
+      // Cette valeur devrait être fournie par le composant parent
+      // Par défaut, on considère les userType 1 et 2 comme des clients
+      return this.user && this.user.userType >= 1;
+    }
+  },
+  
+  watch: {
+    // Observer les changements dans les données utilisateur
+    user: {
+      immediate: true,
+      handler(newUser) {
+        if (newUser) {
+          this.initializeForm(newUser);
         }
-      },
-      
-      // Mise à jour du profil
-      async updateProfile() {
-        // Validation du formulaire de mot de passe
-        if (this.passwordForm.new || this.passwordForm.current || this.passwordForm.confirm) {
-          if (!this.passwordForm.current) {
-            alert('Veuillez saisir votre mot de passe actuel');
-            return;
-          }
-          
-          if (this.passwordForm.new !== this.passwordForm.confirm) {
-            alert('Les nouveaux mots de passe ne correspondent pas');
-            return;
-          }
-          
-          if (this.passwordForm.new.length < 8) {
-            alert('Le nouveau mot de passe doit contenir au moins 8 caractères');
-            return;
-          }
-        }
-        
-        this.loading = true;
-        
-        try {
-          // Mise à jour du profil
-          // Dans un cas réel, ce serait un appel API
-          // await api.updateProfile(this.profile);
-          
-          // Si changement de mot de passe
-          if (this.passwordForm.new) {
-            // await api.updatePassword(this.passwordForm);
-            this.resetPasswordForm();
-          }
-          
-          // Émettre l'événement de succès vers le parent
-          this.$emit('update-success', 'Profil mis à jour avec succès');
-        } catch (error) {
-          console.error('Erreur lors de la mise à jour du profil:', error);
-          alert('Une erreur est survenue lors de la mise à jour du profil');
-        } finally {
-          this.loading = false;
-        }
-      },
-      
-      // Réinitialisation du formulaire
-      resetForm() {
-        // Recharger les données du profil depuis le serveur
-        this.fetchProfile();
-        this.resetPasswordForm();
-      },
-      
-      // Réinitialisation du formulaire de mot de passe
-      resetPasswordForm() {
-        this.passwordForm = {
-          current: '',
-          new: '',
-          confirm: ''
-        };
       }
     }
-  };
-  </script>
+  },
+  
+  mounted() {
+    // Si l'utilisateur n'est pas fourni via les props, le récupérer
+    if (!this.user) {
+      this.fetchUserProfile();
+    }
+  },
+  
+  methods: {
+    // Récupérer le profil utilisateur
+    async fetchUserProfile() {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        // À remplacer par l'appel API réel
+        // const response = await this.$axios.$get('/api/users/me');
+        // const userData = response.data;
+        
+        // Simulation pour le développement
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const userData = {
+          id: '1',
+          first_name: 'Jean',
+          last_name: 'Dupont',
+          email: 'jean.dupont@example.com',
+          avatar: null,
+          company: 'Immobilier Conseil',
+          phone: '01 23 45 67 89',
+          address: '123 rue de Paris\n75001 Paris',
+          contact_instructions: 'Préférence pour les contacts par email. Disponible par téléphone entre 9h et 18h en semaine.',
+          hide_email: false,
+          hide_phone: true,
+          hide_address: true
+        };
+        
+        this.initializeForm(userData);
+      } catch (error) {
+        console.error('Erreur lors du chargement du profil:', error);
+        this.error = "Impossible de charger votre profil. Veuillez réessayer.";
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Initialiser le formulaire avec les données utilisateur
+    initializeForm(userData) {
+      this.profileForm = {
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || '',
+        email: userData.email || '',
+        avatar: userData.avatar || null,
+        avatar_file: null,
+        company: userData.company || '',
+        phone: userData.phone || '',
+        address: userData.address || '',
+        contact_instructions: userData.contact_instructions || '',
+        hide_email: userData.hide_email || false,
+        hide_phone: userData.hide_phone || false,
+        hide_address: userData.hide_address || false
+      };
+      
+      // Créer une copie pour pouvoir annuler les modifications
+      this.originalProfile = { ...this.profileForm };
+    },
+    
+    // Gérer le téléchargement d'un fichier image
+    handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      // Vérifier le type de fichier
+      if (!file.type.match('image.*')) {
+        alert('Veuillez sélectionner une image.');
+        return;
+      }
+      
+      // Vérifier la taille du fichier (2 Mo max)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('La taille de l\'image ne doit pas dépasser 2 Mo.');
+        return;
+      }
+      
+      // Stocker le fichier pour le téléchargement ultérieur
+      this.profileForm.avatar_file = file;
+      
+      // Réinitialiser l'input file pour permettre de recharger le même fichier si nécessaire
+      event.target.value = '';
+    },
+    
+    // Supprimer l'avatar
+    removeAvatar() {
+      this.profileForm.avatar = null;
+      this.profileForm.avatar_file = null;
+    },
+    
+    // Enregistrer le profil
+    async saveProfile() {
+      this.saving = true;
+      
+      try {
+        // Créer un objet FormData pour le téléchargement du fichier
+        const formData = new FormData();
+        Object.keys(this.profileForm).forEach(key => {
+          if (key !== 'avatar_file' && key !== 'avatar') {
+            formData.append(key, this.profileForm[key]);
+          }
+        });
+        
+        // Ajouter le fichier avatar s'il existe
+        if (this.profileForm.avatar_file) {
+          formData.append('avatar', this.profileForm.avatar_file);
+        } else if (this.profileForm.avatar === null && this.originalProfile.avatar) {
+          // Cas où l'avatar a été supprimé
+          formData.append('avatar', '');
+        }
+        
+        // À remplacer par l'appel API réel
+        // const response = await this.$axios.$patch('/api/users/me', formData);
+        
+        // Simulation pour le développement
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Mise à jour de l'original après succès
+        this.originalProfile = { ...this.profileForm };
+        this.profileForm.avatar_file = null; // Réinitialiser après le téléchargement
+        
+        // Émettre l'événement de succès
+        this.$emit('update-success', 'Votre profil a été mis à jour avec succès');
+      } catch (error) {
+        console.error('Erreur lors de la sauvegarde du profil:', error);
+        alert('Une erreur est survenue lors de la sauvegarde de votre profil. Veuillez réessayer.');
+      } finally {
+        this.saving = false;
+      }
+    },
+    
+    // Réinitialiser le formulaire aux valeurs d'origine
+    resetForm() {
+      this.profileForm = { ...this.originalProfile };
+      this.profileForm.avatar_file = null; // Réinitialiser le fichier téléchargé
+    }
+  }
+};
+</script>
