@@ -137,8 +137,8 @@ import AdsTab from '@/components/settings/AdsTab.vue';
 import MessagesTab from '@/components/settings/MessagesTab.vue';
 import OrdersTab from '@/components/settings/OrdersTab.vue';
 import HighlightTab from '@/components/settings/HighlightTab.vue';
+import { useDirectusService } from '@/composables/useDirectusService';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useDirectusApi } from '@/composables/useDirectusApi';
 
 export default {
   name: 'SettingsPage',
@@ -156,23 +156,23 @@ export default {
   },
   
   setup() {
-    // Initialiser le store d'authentification
-    const authStore = useAuthStore();
-    
-    // Initialiser le service Directus API
-    const { 
-      loading: apiLoading,
-      error: apiError,
-      getUserProfile
-    } = useDirectusApi();
-    
-    return {
-      authStore,
-      apiLoading,
-      apiError,
-      getUserProfile
-    };
-  },
+  // Initialiser le store d'authentification
+  const authStore = useAuthStore();
+  
+  // Initialiser le service Directus
+  const { 
+    loading: apiLoading,
+    error: apiError,
+    getUserProfile
+  } = useDirectusService();
+  
+  return {
+    authStore,
+    apiLoading,
+    apiError,
+    getUserProfile
+  };
+},
   
   data() {
     return {
@@ -255,49 +255,44 @@ export default {
   methods: {
     // Récupération des données utilisateur depuis Directus
     async fetchUserData() {
+      console.log('settings.vue: Début fetchUserData');
       this.loading = true;
       this.error = null;
       
       try {
+        console.log('settings.vue: Vérification de l\'authentification');
+        console.log('settings.vue: Token disponible:', !!localStorage.getItem('auth_token'));
+        
         // Vérifier si l'utilisateur est authentifié
         if (!this.authStore.isAuthenticated) {
-          // TEMPORAIRE: Simuler une connexion pour le développement
-          // Dans une vraie application, rediriger vers la page de connexion
+          console.log('settings.vue: Non authentifié, utilisation de données simulées');
           this.user = {
             id: '1',
             first_name: 'Utilisateur',
             last_name: 'Test',
-            type: 2 // Type 2 pour voir tous les onglets pendant le développement
+            type: 2
           };
           this.userType = 2;
           this.loading = false;
           return;
         }
         
-        // Récupérer le profil utilisateur depuis Directus
+        console.log('settings.vue: Tentative d\'appel API getUserProfile');
         const result = await this.getUserProfile();
+        console.log('settings.vue: Résultat:', result);
         
         if (result.data) {
           this.user = result.data;
           this.userType = result.data.type || 0;
-          
-          // Récupérer le nombre de messages non lus (à implémenter)
-          await this.fetchUnreadMessagesCount();
         } else {
           throw new Error("Aucune donnée utilisateur trouvée");
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des données utilisateur:', error);
+        console.error('settings.vue: Erreur complète:', error);
         this.error = "Impossible de charger vos informations. Veuillez réessayer.";
       } finally {
         this.loading = false;
       }
-    },
-    
-    // Version simplifiée pour le développement
-    async fetchUnreadMessagesCount() {
-      // À implémenter plus tard avec l'API réelle
-      this.unreadMessages = 3; // Valeur temporaire pour développement
     },
     
     // Mettre à jour le compteur de messages non lus

@@ -62,6 +62,11 @@
 </template>
 
 <script setup>
+// Déclarer que cette page utilise le layout "annonces"
+definePageMeta({
+  layout: 'annonces'
+});
+
 // Le reste du script reste inchangé
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

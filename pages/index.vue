@@ -74,7 +74,7 @@
     <PricingSection />
 
      <!-- Forfaits -->
-    <TemoignageClient />
+    <!-- <TemoignageClient /> -->
 
     <!-- Alertes email - Nouvelle section -->
     <div class="container mx-auto mt-20 mb-20">

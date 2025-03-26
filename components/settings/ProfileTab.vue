@@ -247,7 +247,7 @@
 </template>
 
 <script>
-import { useDirectusApi } from '@/composables/useDirectusApi';
+import { useDirectusService } from '@/composables/useDirectusService';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export default {
@@ -267,13 +267,14 @@ export default {
   emits: ['update-success'],
   
   setup() {
-    // Initialiser le service Directus API
+    // Utiliser le nouveau service Directus
     const { 
       loading: apiLoading,
       error: apiError,
       getUserProfile,
-      updateUserProfile
-    } = useDirectusApi();
+      updateUserProfile,
+      uploadFile
+    } = useDirectusService();
     
     // Initialiser le store d'authentification
     const authStore = useAuthStore();
@@ -283,6 +284,7 @@ export default {
       apiError,
       getUserProfile,
       updateUserProfile,
+      uploadFile,
       authStore
     };
   },
@@ -329,7 +331,7 @@ export default {
         }
         
         // Récupérer l'URL Directus de la configuration Nuxt
-        const directusUrl = this.$config?.public?.directusUrl || process.env.DIRECTUS_URL || 'http://localhost:8055';
+        const directusUrl = '/api/directus';
         
         // Si c'est un ID de fichier Directus
         return `${directusUrl}/assets/${this.profileForm.avatar}`;
@@ -374,26 +376,31 @@ export default {
   methods: {
     // Récupérer le profil utilisateur
     async fetchUserProfile() {
-      this.loading = true;
-      this.error = null;
+    console.log('ProfileTab: Tentative de récupération du profil...');
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      console.log('ProfileTab: Token disponible:', !!localStorage.getItem('auth_token'));
+      console.log('ProfileTab: Appel à getUserProfile...');
+      const result = await this.getUserProfile();
+      console.log('ProfileTab: Résultat reçu:', result);
       
-      try {
-        // Utiliser le service API Directus au lieu de la simulation
-        const result = await this.getUserProfile();
-        const userData = result.data;
-        
-        if (userData) {
-          this.initializeForm(userData);
-        } else {
-          throw new Error('Aucune donnée utilisateur trouvée');
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement du profil:', error);
-        this.error = error.message || "Impossible de charger votre profil. Veuillez réessayer.";
-      } finally {
-        this.loading = false;
+      const userData = result.data;
+      
+      if (userData) {
+        console.log('ProfileTab: Données utilisateur valides, initialisation du formulaire');
+        this.initializeForm(userData);
+      } else {
+        throw new Error('Aucune donnée utilisateur trouvée');
       }
-    },
+    } catch (error) {
+      console.error('ProfileTab: Erreur complète:', error);
+      this.error = error.message || "Impossible de charger votre profil. Veuillez réessayer.";
+    } finally {
+      this.loading = false;
+    }
+},
     
     // Initialiser le formulaire avec les données utilisateur
     initializeForm(userData) {
@@ -455,26 +462,8 @@ export default {
         
         // Si un nouveau fichier a été téléchargé, on l'envoie d'abord
         if (this.profileForm.avatar_file) {
-          const formData = new FormData();
-          formData.append('file', this.profileForm.avatar_file);
-          
-          // Utiliser l'API Directus pour uploader le fichier
-          const directusUrl = this.$config?.public?.directusUrl || process.env.DIRECTUS_URL || 'http://localhost:8055';
-          const token = this.authStore.token || localStorage.getItem('auth_token');
-          
-          const response = await fetch(`${directusUrl}/files`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            body: formData
-          });
-          
-          if (!response.ok) {
-            throw new Error('Erreur lors de l\'upload du fichier');
-          }
-          
-          const result = await response.json();
+          // Utiliser la méthode uploadFile du service
+          const result = await this.uploadFile(this.profileForm.avatar_file);
           avatarId = result.data.id;
         }
         

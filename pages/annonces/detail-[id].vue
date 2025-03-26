@@ -334,15 +334,22 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import LocationMap from '~/components/common/LocationMap.vue';
+import { useAnnonces } from '~/composables/useAnnonces';
+
+// Déclarer que cette page utilise le layout "annonces"
+definePageMeta({
+  layout: 'annonces'
+});
 
 // Récupérer l'ID depuis l'URL
 const route = useRoute();
 const id = route.params.id;
 
+// Utiliser le composable annonces
+const { fetchAnnonceById, loading, error } = useAnnonces();
+
 // État local
 const annonce = ref({});
-const loading = ref(true);
-const error = ref(null);
 const currentImage = ref('');
 const currentLocationImage = ref('');
 
@@ -444,19 +451,13 @@ const hasLocationImages = computed(() => {
   return false;
 });
 
-// Charger les données via un proxy
+// Charger les données via notre composable
 onMounted(async () => {
   try {
-    const response = await fetch(`/api/annonces/${id}`);
+    const result = await fetchAnnonceById(id);
     
-    if (!response.ok) {
-      throw new Error(`Erreur API: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.success && data.annonce) {
-      annonce.value = data.annonce;
+    if (result.success && result.annonce) {
+      annonce.value = result.annonce;
       // Définir l'image principale comme image courante
       if (annonce.value.image_principale) {
         currentImage.value = annonce.value.image_principale;
@@ -476,9 +477,7 @@ onMounted(async () => {
     }
   } catch (err) {
     console.error('Erreur:', err);
-    error.value = err.message;
-  } finally {
-    loading.value = false;
+    // Pas besoin de définir error.value car il est déjà géré par le composable
   }
 });
 

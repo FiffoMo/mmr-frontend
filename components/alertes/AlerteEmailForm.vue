@@ -218,18 +218,20 @@ const submitForm = async () => {
   errorMessage.value = '';
   
   try {
-    // Appel à notre API avec les bons noms de champs pour correspondre à Directus
-    const response = await $fetch('/api/alertes-email', {
+    // Appel via notre nouveau proxy Directus
+    const response = await $fetch('/api/directus/items/alertes_email', {
       method: 'POST',
       body: {
         email: formData.email,
         types: formData.types,
-        prix_max: formData.prixMax,
-        surface_min: formData.surfaceMin,
+        prix_max: formData.prixMax ? parseInt(formData.prixMax) : null,
+        surface_min: formData.surfaceMin ? parseInt(formData.surfaceMin) : null,
         localisation: formData.localisation,
-        rentabilite_min: formData.rentabiliteMin,
+        rentabilite_min: formData.rentabiliteMin ? parseFloat(formData.rentabiliteMin) : null,
         frequence_quotidienne: formData.frequenceQuotidienne,
-        accept_confidentialite: formData.acceptConfidentialite
+        accept_confidentialite: formData.acceptConfidentialite,
+        token_confirmation: crypto.randomUUID(), // Générer un token unique
+        status: 'inactive'
       }
     });
     
