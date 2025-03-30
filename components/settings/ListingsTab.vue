@@ -469,137 +469,38 @@ export default {
   methods: {
     // Récupérer les forfaits et annonces
     async fetchListings() {
-      this.loading = true;
-      this.error = null;
-      
-      try {
-        // À remplacer par l'appel API réel
-        // const response = await this.$axios.$get(`/api/users/${this.userId}/forfaits-annonces`);
-        // this.forfaits = response.data;
-        
-        // Données simulées pour le développement
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        this.forfaits = [
-          {
-            id: '1',
-            nom: 'Forfait Premium',
-            limite_annonces: 25,
-            date_expiration: '20/06/2023',
-            jours_restants: 45,
-            annonces: [
-              {
-                id: '101',
-                titre: 'Appartement 3 pièces avec terrasse',
-                type_bien: 'Appartement',
-                localisation: 'Paris 11e',
-                prix: 450000,
-                surface: 65,
-                pieces: 3,
-                chambres: 2,
-                image: 'https://via.placeholder.com/300x200',
-                status: 'published',
-                date_publication: '2023-03-15',
-                vues: 356,
-                favoris: 12,
-                messages: 5,
-                mise_en_avant: true
-              },
-              {
-                id: '102',
-                titre: 'Studio meublé proche métro',
-                type_bien: 'Studio',
-                localisation: 'Paris 15e',
-                prix: 220000,
-                surface: 28,
-                pieces: 1,
-                chambres: 0,
-                image: 'https://via.placeholder.com/300x200',
-                status: 'published',
-                date_publication: '2023-04-02',
-                vues: 178,
-                favoris: 5,
-                messages: 3,
-                mise_en_avant: false
-              },
-              {
-                id: '103',
-                titre: 'Maison 5 pièces avec jardin',
-                type_bien: 'Maison',
-                localisation: 'Suresnes',
-                prix: 980000,
-                surface: 140,
-                pieces: 5,
-                chambres: 4,
-                image: 'https://via.placeholder.com/300x200',
-                status: 'suspended',
-                date_publication: '2023-02-28',
-                vues: 245,
-                favoris: 8,
-                messages: 4,
-                mise_en_avant: false
-              }
-            ]
-          },
-          {
-            id: '2',
-            nom: 'Forfait Dixit',
-            limite_annonces: 10,
-            date_expiration: '15/04/2023',
-            jours_restants: 5,
-            annonces: [
-              {
-                id: '201',
-                titre: 'Appartement 2 pièces rénové',
-                type_bien: 'Appartement',
-                localisation: 'Lyon 3e',
-                prix: 280000,
-                surface: 45,
-                pieces: 2,
-                chambres: 1,
-                image: 'https://via.placeholder.com/300x200',
-                status: 'published',
-                date_publication: '2023-03-20',
-                vues: 124,
-                favoris: 3,
-                messages: 1,
-                mise_en_avant: false
-              },
-              {
-                id: '202',
-                titre: 'Loft dans ancien atelier',
-                type_bien: 'Loft',
-                localisation: 'Lyon 7e',
-                prix: 420000,
-                surface: 95,
-                pieces: 3,
-                chambres: 2,
-                image: null,
-                status: 'pending',
-                date_publication: null,
-                vues: 0,
-                favoris: 0,
-                messages: 0,
-                mise_en_avant: false
-              }
-            ]
-          },
-          {
-            id: '3',
-            nom: 'Forfait Essentiel',
-            limite_annonces: 5,
-            date_expiration: '15/10/2023',
-            jours_restants: 160,
-            annonces: []
-          }
-        ];
-      } catch (error) {
-        console.error('Erreur lors du chargement des annonces:', error);
-        this.error = "Impossible de charger vos annonces. Veuillez réessayer.";
-      } finally {
-        this.loading = false;
+  this.loading = true;
+  this.error = null;
+  
+  try {
+    // Remplacer les données simulées par un appel API réel
+    const response = await fetch(`/api/directus/items/annonces?filter[user_id][_eq]=${this.userId}&fields=*`);
+    
+    if (!response.ok) {
+      throw new Error(`Erreur: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    // Adapter le format des données si nécessaire
+    this.forfaits = [
+      {
+        id: '1',
+        nom: 'Mes Annonces',
+        limite_annonces: 100, // Ou une autre valeur appropriée
+        date_expiration: '31/12/2025', // À ajuster selon votre logique métier
+        jours_restants: 365, // À calculer
+        annonces: data.data || []
       }
-    },
+    ];
+    
+    this.totalItems = this.forfaits[0].annonces.length;
+  } catch (error) {
+    console.error('Erreur lors du chargement des annonces:', error);
+    this.error = "Impossible de charger vos annonces. Veuillez réessayer.";
+  } finally {
+    this.loading = false;
+  }
+},
     
     // Filtrer les annonces d'un forfait selon les critères
     filteredAnnonces(forfait) {

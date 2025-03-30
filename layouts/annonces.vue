@@ -15,8 +15,8 @@
         <!-- Barre latérale (1/3) -->
         <div class="md:w-1/3 lg:w-1/4 space-y-6">
           <!-- Publicité supérieure (300x250) -->
-          <PubliciteEmplacement 
-            emplacement="annonce_sidebar-top" 
+          <PubliciteRotative
+            emplacement="ANNONCE_SIDEBAR_TOP" 
             :width="300" 
             :height="250"
             titre="Publicité"
@@ -27,8 +27,8 @@
           <MiseEnAvantSidebar />
           
           <!-- Publicité inférieure (300x600) -->
-          <PubliciteEmplacement 
-            emplacement="annonce_sidebar-bottom" 
+          <PubliciteRotative 
+            emplacement="ANNONCE_SIDEBAR_BOTTOM" 
             :width="300" 
             :height="600"
             titre="Espace publicitaire bas"
@@ -51,5 +51,5 @@ import NavBar from '~/components/layout/NavBar.vue';
 import Footer from '~/components/layout/Footer.vue';
 import MiseEnAvantSidebar from '~/components/annonces/MiseEnAvantSidebar.vue';
 import AlerteEmailTrigger from '~/components/alertes/AlerteEmailTrigger.vue';
-import PubliciteEmplacement from '~/components/publicites/PubliciteEmplacement.vue';
+import PubliciteRotative from '~/components/publicites/PubliciteRotative.vue';
 </script>

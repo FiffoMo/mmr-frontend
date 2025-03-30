@@ -8,8 +8,16 @@
       <SearchBar />
     </div>
 
-    <!-- Pub HOME_TOP 1024 x 180 -->
-    <h2 class="text-3xl text-center font-bold mb-4 mt-10">ici pub HOME TOP</h2>
+    <!-- Publicité en haut de la page d'accueil -->
+    <div class="my-4 mt-10">
+      <PubliciteRotative 
+        emplacement="HOME_TOP"
+        :width="1030"
+        :height="200"
+        :show-label="true"
+        :rotation-duration="5000"
+      />
+    </div>
 
     <!-- Présentation du concept MMR -->
     <section class="py-16 container mx-auto px-4">
@@ -76,10 +84,22 @@
      <!-- Forfaits -->
     <!-- <TemoignageClient /> -->
 
+    <!-- Publicité en bas de la page d'accueil -->
+    <div class="my-4 mt-10">
+      <PubliciteRotative 
+        emplacement="HOME_FOOTER"
+        :width="1030"
+        :height="200"
+        :show-label="true"
+        :rotation-duration="5000"
+      />
+    </div>
+
     <!-- Alertes email - Nouvelle section -->
-    <div class="container mx-auto mt-20 mb-20">
+    <div class="container mx-auto mt-10 mb-20">
       <AlerteEmailTrigger />
     </div>
+    
     <!-- Call-to-action -->
     <section class="py-16 bg-cyan-500 text-white">
       <div class="container mx-auto px-4 text-center">
@@ -107,4 +127,5 @@ import RecentAnnonces from '~/components/home/RecentAnnonces.vue';
 import PricingSection from '~/components/home/PricingSection.vue';
 import AlerteEmailTrigger from '~/components/alertes/AlerteEmailTrigger.vue';
 import TemoignageClient from '~/components/home/TemoignageClient.vue';
+import PubliciteRotative from '~/components/publicites/PubliciteRotative.vue';
 </script>

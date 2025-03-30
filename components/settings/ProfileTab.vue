@@ -23,7 +23,7 @@
     <!-- Formulaire de profil -->
     <form v-else @submit.prevent="saveProfile" class="space-y-6 bg-slate-200 p-6 rounded-lg border border-gray-200 shadow-sm">
       <!-- Avatar / Logo -->
-      <div class="flex flex-col md:flex-row items-start md:items-center gap-6 pb-6 border-b border-gray-4s00">
+      <div class="flex flex-col md:flex-row items-start md:items-center gap-6 pb-6 border-b border-gray-200">
         <div class="flex-shrink-0">
           <div class="relative">
             <img 
@@ -91,7 +91,7 @@
               v-model="profileForm.first_name"
               type="text"
               required
-              class="block w-full h-10 px-3 px-3 rounded-md border-gray-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+              class="block w-full h-10 px-3 rounded-md border-gray-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
             />
           </div>
           
@@ -103,11 +103,11 @@
               v-model="profileForm.last_name"
               type="text"
               required
-              class="block w-full h-10 px-3 px-3 rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+              class="block w-full h-10 px-3 rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
             />
           </div>
           
-          <!-- Entreprise (Nouveau champ) -->
+          <!-- Entreprise -->
           <div class="md:col-span-2">
             <label for="company" class="block text-sm font-medium text-gray-700 mb-1">Entreprise</label>
             <input
@@ -117,6 +117,9 @@
               class="block w-full h-10 px-3 rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
               placeholder="Nom de votre entreprise (facultatif)"
             />
+            <p v-if="debug" class="mt-1 text-xs text-gray-500">
+              Valeur actuelle: {{ profileForm.company }}
+            </p>
           </div>
         </div>
       </div>
@@ -149,6 +152,9 @@
           <p v-if="isClient" class="mt-1 text-xs text-red-500">
             * Obligatoire pour les clients avec forfaits
           </p>
+          <p v-if="debug" class="mt-1 text-xs text-gray-500">
+            Valeur hide_email: {{ profileForm.hide_email }}
+          </p>
         </div>
         
         <!-- Téléphone -->
@@ -175,6 +181,9 @@
           />
           <p v-if="isClient" class="mt-1 text-xs text-red-500">
             * Obligatoire pour les clients avec forfaits
+          </p>
+          <p v-if="debug" class="mt-1 text-xs text-text-rose-500">
+            Ce champ manque dans Directus. Ajouter avec SQL.
           </p>
         </div>
         
@@ -203,9 +212,12 @@
           <p v-if="isClient" class="mt-1 text-xs text-red-500">
             * Obligatoire pour les clients avec forfaits
           </p>
+          <p v-if="debug" class="mt-1 text-xs text-gray-500">
+            Valeur actuelle: {{ profileForm.address }}
+          </p>
         </div>
         
-        <!-- Comment me contacter (Nouveau champ) -->
+        <!-- Comment me contacter -->
         <div class="space-y-2">
           <label for="contact-instructions" class="block text-sm font-medium text-gray-700">Comment me contacter ?</label>
           <textarea
@@ -218,7 +230,16 @@
           <p class="text-xs text-gray-500">
             Vous pouvez préciser ici vos préférences de contact (horaires, méthode privilégiée, etc.)
           </p>
+          <p v-if="debug" class="mt-1 text-xs text-gray-500">
+            Valeur actuelle: {{ profileForm.contact_instructions }}
+          </p>
         </div>
+      </div>
+      
+      <!-- Zone de débogage -->
+      <div v-if="debug" class="p-4 border border-gray-300 bg-gray-50 rounded-md mt-4">
+        <h4 class="font-medium mb-2">Données de débogage</h4>
+        <pre class="text-xs overflow-auto max-h-40">{{ JSON.stringify(profileForm, null, 2) }}</pre>
       </div>
       
       <!-- Boutons d'action -->
@@ -240,6 +261,14 @@
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           Enregistrer
+        </button>
+        <button 
+          v-if="debug"
+          type="button"
+          @click="debugFetchProfile"
+          class="ml-3 px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none"
+        >
+          Test API
         </button>
       </div>
     </form>
@@ -267,7 +296,7 @@ export default {
   emits: ['update-success'],
   
   setup() {
-    // Utiliser le nouveau service Directus
+    // Utiliser le service Directus
     const { 
       loading: apiLoading,
       error: apiError,
@@ -294,6 +323,7 @@ export default {
       loading: false,
       saving: false,
       error: null,
+      debug: false, // Activer le mode débogage
       
       // Formulaire de profil
       profileForm: {
@@ -324,17 +354,13 @@ export default {
   computed: {
     // URL de l'avatar (pour l'affichage)
     avatarUrl() {
-      if (this.profileForm.avatar && typeof this.profileForm.avatar === 'string') {
-        // Si c'est une URL directe de Directus
-        if (this.profileForm.avatar.startsWith('http')) {
-          return this.profileForm.avatar;
-        }
-        
-        // Récupérer l'URL Directus de la configuration Nuxt
-        const directusUrl = '/api/directus';
-        
-        // Si c'est un ID de fichier Directus
-        return `${directusUrl}/assets/${this.profileForm.avatar}`;
+      if (this.profileForm.avatar) {
+        // Si c'est un ID, construire le chemin correct vers le dossier public
+        const avatarId = typeof this.profileForm.avatar === 'object' 
+          ? this.profileForm.avatar.id 
+          : this.profileForm.avatar;
+          
+        return `/uploads/${avatarId}.png`;
       } else if (this.profileForm.avatar_file) {
         // Si c'est un fichier nouvellement téléchargé
         return URL.createObjectURL(this.profileForm.avatar_file);
@@ -376,51 +402,133 @@ export default {
   methods: {
     // Récupérer le profil utilisateur
     async fetchUserProfile() {
-    console.log('ProfileTab: Tentative de récupération du profil...');
-    this.loading = true;
-    this.error = null;
-    
-    try {
-      console.log('ProfileTab: Token disponible:', !!localStorage.getItem('auth_token'));
-      console.log('ProfileTab: Appel à getUserProfile...');
-      const result = await this.getUserProfile();
-      console.log('ProfileTab: Résultat reçu:', result);
+      console.log('ProfileTab: Tentative de récupération du profil...');
+      this.loading = true;
+      this.error = null;
       
-      const userData = result.data;
-      
-      if (userData) {
-        console.log('ProfileTab: Données utilisateur valides, initialisation du formulaire');
-        this.initializeForm(userData);
-      } else {
-        throw new Error('Aucune donnée utilisateur trouvée');
+      try {
+        // Effectuer la requête à l'API Directus via notre proxy
+        const response = await fetch('/api/directus/users/me?fields=*,avatar.*', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('ProfileTab: Résultat reçu:', result);
+        
+        if (result.data) {
+          // Assigner directement chaque propriété, une par une
+          this.profileForm.first_name = result.data.first_name || '';
+          this.profileForm.last_name = result.data.last_name || '';
+          this.profileForm.email = result.data.email || '';
+          this.profileForm.avatar = result.data.avatar || null;
+          this.profileForm.avatar_file = null;
+          
+          // Les champs problématiques - assignation directe et log
+          console.log('Valeurs à assigner:');
+          console.log('company:', result.data.company);
+          console.log('address:', result.data.address);
+          console.log('contact_instructions:', result.data.contact_instructions);
+          
+          this.profileForm.company = result.data.company || '';
+          this.profileForm.phone = result.data.phone || '';
+          this.profileForm.address = result.data.address || '';
+          this.profileForm.contact_instructions = result.data.contact_instructions || '';
+          
+          // Conversion explicite des booléens
+          this.profileForm.hide_email = Boolean(result.data.hide_email);
+          this.profileForm.hide_phone = Boolean(result.data.hide_phone);
+          this.profileForm.hide_address = Boolean(result.data.hide_address);
+          
+          // Vérifier les valeurs après assignation
+          console.log('Valeurs après assignation:');
+          console.log('company:', this.profileForm.company);
+          console.log('address:', this.profileForm.address);
+          console.log('contact_instructions:', this.profileForm.contact_instructions);
+          
+          // Créer une copie pour pouvoir annuler les modifications
+          this.originalProfile = JSON.parse(JSON.stringify(this.profileForm));
+          
+          console.log('ProfileTab: Formulaire initialisé avec succès');
+        } else {
+          throw new Error('Aucune donnée utilisateur trouvée');
+        }
+      } catch (error) {
+        console.error('ProfileTab: Erreur complète:', error);
+        this.error = error.message || "Impossible de charger votre profil. Veuillez réessayer.";
+      } finally {
+        this.loading = false;
       }
-    } catch (error) {
-      console.error('ProfileTab: Erreur complète:', error);
-      this.error = error.message || "Impossible de charger votre profil. Veuillez réessayer.";
-    } finally {
-      this.loading = false;
-    }
-},
+    },
+    
+    // Fonction de test pour le débogage
+    async debugFetchProfile() {
+      try {
+        console.log('Test API: Récupération du profil utilisateur...');
+        
+        const response = await fetch('/api/directus/users/me?fields=*,avatar.*', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Données brutes reçues de l\'API:', result.data);
+        
+        // Afficher les champs spécifiques
+        const userData = result.data;
+        console.log('Vérification des champs:');
+        console.log('company:', userData.company);
+        console.log('address:', userData.address);
+        console.log('contact_instructions:', userData.contact_instructions);
+        console.log('hide_email:', userData.hide_email);
+        console.log('hide_phone:', userData.hide_phone);
+        console.log('hide_address:', userData.hide_address);
+        console.log('phone (manquant):', userData.phone);
+        
+        alert('Vérifiez la console pour les détails de la réponse API');
+      } catch (error) {
+        console.error('Erreur lors du test API:', error);
+        alert(`Erreur lors du test API: ${error.message}`);
+      }
+    },
     
     // Initialiser le formulaire avec les données utilisateur
     initializeForm(userData) {
-      this.profileForm = {
+      console.log('Initialisation du formulaire avec données brutes:', userData);
+      
+      // Faire une copie des données pour ne pas les modifier directement
+      const formData = {
         first_name: userData.first_name || '',
         last_name: userData.last_name || '',
         email: userData.email || '',
         avatar: userData.avatar || null,
-        avatar_file: null,
-        company: userData.company || '',
-        phone: userData.phone || '',
-        address: userData.address || '',
-        contact_instructions: userData.contact_instructions || '',
-        hide_email: userData.hide_email || false,
-        hide_phone: userData.hide_phone || false,
-        hide_address: userData.hide_address || false
+        avatar_file: null
       };
       
+      // Ajouter explicitement chaque champ un par un
+      formData.company = userData.company || '';
+      formData.phone = userData.phone || '';
+      formData.address = userData.address || '';
+      formData.contact_instructions = userData.contact_instructions || '';
+      
+      // Conversion explicite des booléens
+      formData.hide_email = Boolean(userData.hide_email);
+      formData.hide_phone = Boolean(userData.hide_phone);
+      formData.hide_address = Boolean(userData.hide_address);
+      
+      // Assigner l'objet complet pour forcer la réactivité
+      this.profileForm = { ...formData };
+      
       // Créer une copie pour pouvoir annuler les modifications
-      this.originalProfile = { ...this.profileForm };
+      this.originalProfile = JSON.parse(JSON.stringify(this.profileForm));
+      
+      console.log('Formulaire après initialisation complète:', this.profileForm);
     },
     
     // Gérer le téléchargement d'un fichier image
@@ -460,10 +568,23 @@ export default {
       try {
         let avatarId = this.profileForm.avatar;
         
-        // Si un nouveau fichier a été téléchargé, on l'envoie d'abord
+        // Si un nouveau fichier a été téléchargé
         if (this.profileForm.avatar_file) {
-          // Utiliser la méthode uploadFile du service
-          const result = await this.uploadFile(this.profileForm.avatar_file);
+          // Création d'un FormData pour l'upload
+          const formData = new FormData();
+          formData.append('file', this.profileForm.avatar_file);
+          
+          // Upload du fichier via le proxy Directus
+          const response = await fetch('/api/directus/files', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Erreur lors de l'upload: ${response.status}`);
+          }
+          
+          const result = await response.json();
           avatarId = result.data.id;
         }
         
@@ -474,16 +595,55 @@ export default {
           email: this.profileForm.email,
           avatar: avatarId,
           company: this.profileForm.company,
-          phone: this.profileForm.phone,
           address: this.profileForm.address,
           contact_instructions: this.profileForm.contact_instructions,
-          hide_email: this.profileForm.hide_email,
-          hide_phone: this.profileForm.hide_phone,
-          hide_address: this.profileForm.hide_address
+          hide_email: this.profileForm.hide_email ? 1 : 0,
+          hide_phone: this.profileForm.hide_phone ? 1 : 0,
+          hide_address: this.profileForm.hide_address ? 1 : 0
+          // Nous n'incluons pas 'phone' car ce champ n'existe pas encore dans la DB
         };
         
-        // Utiliser le service API Directus pour mettre à jour le profil
-        await this.updateUserProfile(userData);
+        // Vérifier si le téléphone existe, et si oui, l'ajouter
+        if (this.profileForm.phone) {
+          try {
+            const userDataString = JSON.stringify(userData);
+            const tempUserData = JSON.parse(userDataString);
+            tempUserData.phone = this.profileForm.phone;
+            const testResponse = await fetch('/api/directus/users/me', {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(tempUserData)
+            });
+            
+            if (testResponse.ok) {
+              // Si pas d'erreur, le champ existe et nous pouvons l'ajouter à userData
+              userData.phone = this.profileForm.phone;
+            } else {
+              console.warn('Le champ téléphone n\'existe pas encore dans la base de données');
+            }
+          } catch (phoneTestError) {
+            console.warn('Erreur lors du test du champ téléphone:', phoneTestError);
+          }
+        }
+        
+        console.log('Envoi des données utilisateur:', userData);
+        
+        // Mettre à jour le profil via le proxy Directus
+        const response = await fetch('/api/directus/users/me', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(userData)
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Erreur de réponse:', errorText);
+          throw new Error(`Erreur lors de la mise à jour: ${response.status}`);
+        }
         
         // Mise à jour de l'original après succès
         this.profileForm.avatar = avatarId;

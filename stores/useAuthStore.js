@@ -1,4 +1,4 @@
-// stores/useAuthStore.js
+// Fichier à placer dans: mmr-frontend/stores/useAuthStore.js
 import { defineStore } from 'pinia';
 
 export const useAuthStore = defineStore('auth', {
@@ -6,7 +6,8 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     token: null,
     loading: false,
-    error: null
+    error: null,
+    isInitialized: false
   }),
   
   getters: {
@@ -35,6 +36,15 @@ export const useAuthStore = defineStore('auth', {
             }
           }
         }
+        
+        // Définir le cookie pour que le serveur puisse l'utiliser
+        if (this.token) {
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + 7); // Cookie valide 7 jours
+          document.cookie = `auth_token=${this.token}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Lax`;
+        }
+        
+        this.isInitialized = true;
       }
     },
     
@@ -46,7 +56,14 @@ export const useAuthStore = defineStore('auth', {
       if (process.client) {
         localStorage.setItem('auth_token', token);
         localStorage.setItem('auth_user', JSON.stringify(user));
+        
+        // Définir le cookie pour que le serveur puisse l'utiliser
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 7); // Cookie valide 7 jours
+        document.cookie = `auth_token=${token}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Lax`;
       }
+      
+      this.isInitialized = true;
     },
     
     // Effacer l'état d'authentification
@@ -57,6 +74,9 @@ export const useAuthStore = defineStore('auth', {
       if (process.client) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
+        
+        // Supprimer le cookie
+        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
       }
     },
     
@@ -137,6 +157,36 @@ export const useAuthStore = defineStore('auth', {
       
       if (process.client) {
         localStorage.setItem('auth_user', JSON.stringify(this.user));
+      }
+    },
+    
+    // Vérifier si le token est valide
+    async checkToken() {
+      if (!this.token) return false;
+      
+      try {
+        const directusUrl = process.env.DIRECTUS_URL || 'http://localhost:8055';
+        
+        const response = await fetch(`${directusUrl}/users/me`, {
+          headers: {
+            'Authorization': `Bearer ${this.token}`
+          }
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          this.user = userData.data;
+          return true;
+        } else {
+          // Si le token est invalide, on nettoie l'authentification
+          console.warn('Token invalide, déconnexion...');
+          this.clearAuth();
+          return false;
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification du token:', error);
+        this.clearAuth();
+        return false;
       }
     }
   }

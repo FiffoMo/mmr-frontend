@@ -443,7 +443,7 @@ export default {
             type: 'banner',
             location: 'homepage',
             dimensions: '728x90 px',
-            image: 'https://via.placeholder.com/728x90',
+            image: 'https://placehold.co/728x90',
             url: 'https://example.com/promo',
             price: 25000,
             start_date: '2023-06-01',
@@ -460,7 +460,7 @@ export default {
             type: 'sidebar',
             location: 'listing_page',
             dimensions: '300x250 px',
-            image: 'https://via.placeholder.com/300x250',
+            image: 'https://placehold.co/300x250',
             url: 'https://example.com/invest',
             price: 18000,
             start_date: '2023-04-15',
@@ -477,7 +477,7 @@ export default {
             type: 'popup',
             location: 'exit_intent',
             dimensions: '500x400 px',
-            image: 'https://via.placeholder.com/500x400',
+            image: 'https://placehold.co/500x400',
             url: 'https://example.com/finance',
             price: 35000,
             start_date: '2023-03-01',
@@ -535,16 +535,11 @@ export default {
     // Obtenir le libellé français pour un statut
     getStatusLabel(status) {
       switch (status) {
-        case 'active':
-          return 'Active';
-        case 'pending':
-          return 'En attente';
-        case 'suspended':
-          return 'Suspendue';
-        case 'expired':
-          return 'Expirée';
-        default:
-          return status || 'Inconnu';
+        case 'approuvee': return 'Active';
+        case 'en_attente': return 'En attente';
+        case 'rejetee': return 'Rejetée';
+        case 'terminee': return 'Terminée';
+        default: return status || 'Inconnu';
       }
     },
     

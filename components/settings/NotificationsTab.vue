@@ -1,4 +1,3 @@
-
 <template>
   <div class="p-6">
     <h2 class="text-2xl font-bold text-gray-900 mb-6">Préférences de notifications</h2>
@@ -248,7 +247,7 @@ export default {
   props: {
     userId: {
       type: String,
-      required: true
+      default: ''
     }
   },
   
@@ -256,9 +255,11 @@ export default {
   
   data() {
     return {
+      currentUserId: '', // Stocker l'ID utilisateur récupéré
       loading: false,
       saving: false,
       error: null,
+      preferenceId: null, // ID des préférences dans Directus
       
       // Préférences de notifications
       preferences: {
@@ -305,6 +306,13 @@ export default {
     };
   },
   
+  computed: {
+    // Déplacer effectiveUserId de methods à computed
+    effectiveUserId() {
+      return this.currentUserId || this.userId || '';
+    }
+  },
+  
   watch: {
     // Synchroniser les intérêts sélectionnés avec preferences.newsletter_interets
     selectedInterests: {
@@ -315,47 +323,81 @@ export default {
     }
   },
   
-  mounted() {
+  async mounted() {
+    // Si l'ID utilisateur n'est pas fourni, le récupérer depuis l'API
+    if (!this.userId) {
+      await this.fetchCurrentUserId();
+    }
+    
     this.fetchNotificationPreferences();
   },
   
   methods: {
+    // Nouvelle méthode pour récupérer l'ID utilisateur
+    async fetchCurrentUserId() {
+      try {
+        const response = await fetch('/api/directus/users/me?fields=id', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.data && result.data.id) {
+          this.currentUserId = result.data.id;
+          console.log('ID utilisateur récupéré:', this.currentUserId);
+        } else {
+          throw new Error('ID utilisateur non trouvé dans la réponse');
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération de l\'ID utilisateur:', error);
+      }
+    },
+    
     // Récupérer les préférences de notifications
     async fetchNotificationPreferences() {
       this.loading = true;
       this.error = null;
       
       try {
-        // À remplacer par l'appel API réel
-        // const response = await this.$axios.$get(`/api/users/${this.userId}/notification-preferences`);
-        // const preferencesData = response.data;
+        console.log("Récupération des préférences pour l'utilisateur:", this.effectiveUserId);
         
-        // Simulation pour le développement
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!this.effectiveUserId) {
+          throw new Error('ID utilisateur non disponible');
+        }
         
-        const preferencesData = {
-          email_nouvelles_annonces: true,
-          email_messages: true,
-          email_annonces_expirees: true,
-          email_mises_a_jour: false,
-          app_notifications_push: true,
-          app_nouveaux_messages: true,
-          app_alertes_prix: false,
-          sms_active: false,
-          sms_messages_urgents: true,
-          sms_visites_confirmees: true,
-          sms_offres: false,
-          telephone_verifie: false,
-          telephone: '0612345678',
-          newsletter: true,
-          newsletter_frequence: 'mensuel',
-          newsletter_interets: ['actualites', 'tendances', 'investissement']
-        };
+        // Appel API réel vers Directus via notre proxy
+        const response = await fetch(`/api/directus/items/user_preferences?filter[user_id][_eq]=${this.effectiveUserId}&fields=*`, {
+          credentials: 'include'
+        });
         
-        this.initializePreferences(preferencesData);
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Préférences reçues:', result);
+        
+        if (result.data && result.data.length > 0) {
+          // Utiliser les données de Directus
+          this.preferenceId = result.data[0].id;
+          this.initializePreferences(result.data[0]);
+        } else {
+          // Aucune préférence trouvée, créer des valeurs par défaut
+          console.log('Aucune préférence trouvée, utilisation des valeurs par défaut');
+          this.initializePreferences(this.preferences);
+          
+          // Créer les préférences dans Directus pour ce nouvel utilisateur
+          this.createDefaultPreferences();
+        }
       } catch (error) {
-        console.error('Erreur lors du chargement des préférences de notifications:', error);
+        console.error('Erreur lors du chargement des préférences:', error);
         this.error = "Impossible de charger vos préférences. Veuillez réessayer.";
+        
+        // En cas d'erreur, initialiser avec les valeurs par défaut
+        this.initializePreferences(this.preferences);
       } finally {
         this.loading = false;
       }
@@ -384,42 +426,176 @@ export default {
       this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
     },
     
+    // Créer les préférences par défaut dans Directus
+    async createDefaultPreferences() {
+      try {
+        // Générer un UUID pour l'ID
+        const newId = crypto.randomUUID ? crypto.randomUUID() : 
+          ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+          );
+        
+        console.log('Création des préférences par défaut pour userId:', this.effectiveUserId);
+        
+        if (!this.effectiveUserId) {
+          throw new Error('ID utilisateur non disponible');
+        }
+        
+        // Préparer les données par défaut
+        const defaultPreferences = {
+          id: newId, // Ajout explicite de l'ID
+          user_id: this.effectiveUserId,
+          email_nouvelles_annonces: this.preferences.email_nouvelles_annonces,
+          email_messages: this.preferences.email_messages,
+          email_annonces_expirees: true, // Toujours true
+          email_mises_a_jour: this.preferences.email_mises_a_jour,
+          app_notifications_push: this.preferences.app_notifications_push,
+          app_nouveaux_messages: this.preferences.app_nouveaux_messages,
+          app_alertes_prix: this.preferences.app_alertes_prix,
+          newsletter: this.preferences.newsletter,
+          newsletter_frequence: this.preferences.newsletter_frequence,
+          newsletter_interets: this.preferences.newsletter_interets
+        };
+        
+        console.log('Création des préférences par défaut:', defaultPreferences);
+        
+        // Créer les préférences dans Directus
+        const response = await fetch('/api/directus/items/user_preferences', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(defaultPreferences)
+        });
+        
+        const responseText = await response.text();
+        console.log('Réponse brute de création:', responseText);
+        
+        if (!response.ok) {
+          console.warn(`Échec de la création des préférences par défaut: ${response.status} - ${responseText}`);
+          return;
+        }
+        
+        try {
+          if (responseText) {
+            const result = JSON.parse(responseText);
+            console.log('Préférences par défaut créées:', result);
+            
+            // Stocker l'ID des préférences créées
+            if (result.data && result.data.id) {
+              this.preferenceId = result.data.id;
+              console.log('ID des préférences stocké:', this.preferenceId);
+            }
+          }
+        } catch (parseError) {
+          console.warn('Erreur de parsing JSON:', parseError);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la création des préférences par défaut:', error);
+      }
+    },
+    
     // Enregistrer les préférences
     async savePreferences() {
       this.saving = true;
       
       try {
+        if (!this.effectiveUserId) {
+          throw new Error('ID utilisateur non disponible');
+        }
+        
         // Préparer les données à envoyer
         const dataToSend = {
-          ...this.preferences,
-          // S'assurer que email_annonces_expirees est toujours true
-          email_annonces_expirees: true
+          user_id: this.effectiveUserId,
+          email_nouvelles_annonces: this.preferences.email_nouvelles_annonces,
+          email_messages: this.preferences.email_messages,
+          email_annonces_expirees: true, // Toujours true
+          email_mises_a_jour: this.preferences.email_mises_a_jour,
+          app_notifications_push: this.preferences.app_notifications_push,
+          app_nouveaux_messages: this.preferences.app_notifications_push ? this.preferences.app_nouveaux_messages : false,
+          app_alertes_prix: this.preferences.app_notifications_push ? this.preferences.app_alertes_prix : false,
+          newsletter: this.preferences.newsletter,
+          newsletter_frequence: this.preferences.newsletter ? this.preferences.newsletter_frequence : '',
+          newsletter_interets: this.preferences.newsletter ? this.selectedInterests : []
         };
         
-        // Désactiver les sous-options SMS si sms_active est false
-        if (!dataToSend.sms_active) {
-          dataToSend.sms_messages_urgents = false;
-          dataToSend.sms_visites_confirmees = false;
-          dataToSend.sms_offres = false;
+        console.log('Données à envoyer:', dataToSend);
+        
+        let response;
+        let responseText;
+        
+        if (this.preferenceId) {
+          // Mettre à jour les préférences existantes
+          console.log(`Mise à jour des préférences (ID: ${this.preferenceId})`);
+          
+          try {
+            response = await fetch(`/api/directus/items/user_preferences/${this.preferenceId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify(dataToSend)
+            });
+            
+            responseText = await response.text();
+            console.log('Réponse brute de mise à jour:', responseText);
+            
+            if (!response.ok) {
+              throw new Error(`Erreur lors de la mise à jour: ${response.status} - ${responseText}`);
+            }
+          } catch (patchError) {
+            console.error('Erreur de PATCH détaillée:', patchError);
+            throw patchError;
+          }
+        } else {
+          // Générer un UUID pour le nouvel enregistrement
+          const newId = crypto.randomUUID ? crypto.randomUUID() : 
+            ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+              (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            );
+          
+          // Ajouter l'ID à l'objet
+          dataToSend.id = newId;
+          
+          // Créer de nouvelles préférences
+          console.log('Création de nouvelles préférences avec ID:', newId);
+          
+          try {
+            response = await fetch('/api/directus/items/user_preferences', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify(dataToSend)
+            });
+            
+            responseText = await response.text();
+            console.log('Réponse brute de création:', responseText);
+            
+            if (!response.ok) {
+              throw new Error(`Erreur lors de la création: ${response.status} - ${responseText}`);
+            }
+            
+            // Tenter de parser le JSON si la réponse est OK
+            if (responseText) {
+              try {
+                const result = JSON.parse(responseText);
+                if (result.data && result.data.id) {
+                  this.preferenceId = result.data.id;
+                  console.log('Nouveau préférenceId récupéré:', this.preferenceId);
+                }
+              } catch (parseError) {
+                console.warn('Impossible de parser la réponse JSON:', parseError);
+              }
+            }
+          } catch (postError) {
+            console.error('Erreur de POST détaillée:', postError);
+            throw postError;
+          }
         }
-        
-        // Désactiver les sous-options app_notifications si app_notifications_push est false
-        if (!dataToSend.app_notifications_push) {
-          dataToSend.app_nouveaux_messages = false;
-          dataToSend.app_alertes_prix = false;
-        }
-        
-        // Réinitialiser les options de newsletter si newsletter est false
-        if (!dataToSend.newsletter) {
-          dataToSend.newsletter_frequence = '';
-          dataToSend.newsletter_interets = [];
-        }
-        
-        // À remplacer par l'appel API réel
-        // const response = await this.$axios.$patch(`/api/users/${this.userId}/notification-preferences`, dataToSend);
-        
-        // Simulation pour le développement
-        await new Promise(resolve => setTimeout(resolve, 1500));
         
         // Mise à jour de l'original après succès
         this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
@@ -428,7 +604,7 @@ export default {
         this.$emit('update-success', 'Vos préférences de notifications ont été mises à jour avec succès');
       } catch (error) {
         console.error('Erreur lors de la sauvegarde des préférences:', error);
-        alert('Une erreur est survenue lors de la sauvegarde de vos préférences. Veuillez réessayer.');
+        alert(`Une erreur est survenue lors de la sauvegarde de vos préférences: ${error.message}`);
       } finally {
         this.saving = false;
       }
