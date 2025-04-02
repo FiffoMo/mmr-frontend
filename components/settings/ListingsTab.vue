@@ -1,402 +1,316 @@
 <template>
   <div class="p-6">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4">Mes annonces</h2>
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Mes commandes</h2>
     
-    <!-- Chargement initial -->
-    <div v-if="loading" class="py-10 text-center">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
-      <p class="mt-2 text-gray-500">Chargement de vos annonces...</p>
+    <!-- États de chargement et d'erreur -->
+    <div v-if="loading" class="text-center py-10">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
+      <p class="text-gray-600">Chargement de vos commandes...</p>
     </div>
     
-    <!-- Erreur -->
     <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
       <p class="font-medium">Une erreur est survenue</p>
       <p class="text-sm">{{ error }}</p>
       <button 
-        @click="fetchListings" 
+        @click="fetchOrders" 
         class="mt-2 text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded"
       >
         Réessayer
       </button>
     </div>
     
-    <!-- Aucune annonce -->
-    <div v-else-if="forfaits.length === 0" class="text-center py-10 bg-gray-50 rounded-lg">
+    <!-- Aucune commande -->
+    <div v-else-if="orders.length === 0" class="text-center py-10 bg-gray-50 rounded-lg">
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">Aucune annonce</h3>
-      <p class="mt-1 text-sm text-gray-500">Vous n'avez pas encore publié d'annonce.</p>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">Aucune commande</h3>
+      <p class="mt-1 text-sm text-gray-500">Vous n'avez pas encore passé de commande.</p>
       <div class="mt-6">
-        <NuxtLink to="/publier-annonce" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
-          Publier une annonce
+        <NuxtLink to="/tarifs" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
+          Découvrir nos forfaits
         </NuxtLink>
       </div>
     </div>
     
-    <!-- Liste des annonces groupées par forfait -->
+    <!-- Liste des commandes -->
     <div v-else>
-      <!-- En-tête avec les filtres -->
-      <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
-        <div class="flex flex-wrap items-center gap-4">
-          <div>
-            <label for="status-filter" class="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-            <select 
-              id="status-filter" 
-              v-model="statusFilter" 
-              class="block h-10 px-3 rounded-md border-gray-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
-            >
-              <option value="">Tous les statuts</option>
-              <option value="published">Publiée</option>
-              <option value="suspended">Suspendue</option>
-              <option value="pending">En attente</option>
-              <option value="expired">Expirée</option>
-            </select>
-          </div>
-          
-          <div>
-            <label for="listing-search" class="block text-sm font-medium text-gray-700 mb-1">Recherche</label>
-            <input 
-              id="listing-search" 
-              v-model="searchQuery" 
-              type="text" 
-              placeholder="Rechercher une annonce..." 
-              class="block w-60 h-10 px-3 rounded-md border-gray-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
-            />
-          </div>
+      <!-- Filtres de recherche/tri -->
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-4 bg-gray-50 p-4 rounded-lg">
+        <div>
+          <label for="status-filter" class="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+          <select 
+            id="status-filter" 
+            v-model="statusFilter" 
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+          >
+            <option value="">Tous les statuts</option>
+            <option value="active">Active</option>
+            <option value="pending">En attente</option>
+            <option value="completed">Terminée</option>
+            <option value="cancelled">Annulée</option>
+            <option value="refunded">Remboursée</option>
+          </select>
         </div>
         
         <div>
-          <NuxtLink to="/publier-annonce" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
-            <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Nouvelle annonce
-          </NuxtLink>
+          <label for="sort-by" class="block text-sm font-medium text-gray-700 mb-1">Trier par</label>
+          <select 
+            id="sort-by" 
+            v-model="sortBy" 
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+          >
+            <option value="date_desc">Date (récent → ancien)</option>
+            <option value="date_asc">Date (ancien → récent)</option>
+            <option value="price_desc">Prix (élevé → bas)</option>
+            <option value="price_asc">Prix (bas → élevé)</option>
+          </select>
         </div>
       </div>
       
-      <!-- Section par forfait -->
-      <div v-for="forfait in forfaits" :key="forfait.id" class="mb-8">
-        <!-- En-tête du forfait -->
-        <div class="bg-slate-200 p-4 rounded-t-lg border border-gray-300">
-          <div class="flex flex-wrap justify-between items-center gap-2">
-            <div>
-              <h3 class="text-lg font-medium text-gray-900">{{ forfait.nom }}</h3>
-              <div class="text-sm text-gray-600 flex flex-wrap items-center gap-4 mt-1">
-                <span>
-                  <span class="font-medium">{{ forfait.annonces.length }}</span> / {{ forfait.limite_annonces }} annonces
+      <!-- Tableau des commandes -->
+      <div class="overflow-x-auto rounded-lg shadow">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Référence
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date de fin
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Produit
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Montant
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Statut
+              </th>
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="order in filteredOrders" :key="order.id">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">
+                  #{{ order.reference }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {{ formatDateSimple(order.date_created) }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900" :class="{'text-red-600 font-medium': isExpiringSoon(order.date_expiration)}">
+                  {{ formatDateSimple(order.date_expiration) }}
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm text-gray-900">
+                  {{ order.produit ? order.produit.nom : 'Produit inconnu' }}
+                </div>
+                <div class="text-xs text-gray-500" v-if="order.details">
+                  {{ order.details }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">
+                  {{ formatPrice(order.montant) }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span :class="getStatusClass(order.status)">
+                  {{ getStatusLabel(order.status) }}
                 </span>
-                <span :class="[forfait.jours_restants <= 7 ? 'text-red-600 font-medium' : 'text-gray-600']">
-                  Expire dans {{ forfait.jours_restants }} jours
-                  <span v-if="forfait.jours_restants <= 7" class="text-red-600">
-                    ({{ forfait.date_expiration }})
-                  </span>
-                </span>
-              </div>
-            </div>
-            
-            <div>
-              <button 
-                v-if="forfait.annonces.length < forfait.limite_annonces"
-                @click="goToCreateListing(forfait.id)"
-                class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-cyan-700 bg-cyan-100 hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
-              >
-                <svg class="-ml-0.5 mr-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Publier sur ce forfait
-              </button>
-              <button 
-                v-if="forfait.jours_restants <= 30"
-                @click="renewForfait(forfait.id)"
-                class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-amber-700 bg-amber-100 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 ml-2"
-              >
-                <svg class="-ml-0.5 mr-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Renouveler
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Liste des annonces du forfait -->
-        <div class="overflow-hidden shadow border border-t-0 border-gray-300 rounded-b-lg">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Annonce
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button 
+                  @click="showOrderDetails(order)" 
+                  class="text-cyan-600 hover:text-cyan-900 mr-3"
+                >
                   Détails
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Statistiques
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Statut
-                </th>
-                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-if="filteredAnnonces(forfait).length === 0" class="hover:bg-gray-50">
-                <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                  Aucune annonce correspondant à vos critères dans ce forfait
-                </td>
-              </tr>
-              <tr v-for="annonce in filteredAnnonces(forfait)" :key="annonce.id" class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border border-gray-200">
-                      <img v-if="annonce.image" :src="annonce.image" alt="" class="h-full w-full object-cover" />
-                      <div v-else class="h-full w-full bg-gray-200 flex items-center justify-center text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">
-                        {{ annonce.titre }}
-                      </div>
-                      <div class="text-sm text-gray-500">
-                        {{ annonce.localisation }}
-                      </div>
-                      <div class="text-sm font-medium text-cyan-600">
-                        {{ formatPrice(annonce.prix) }}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-6 py-4">
-                  <div class="text-sm text-gray-900">
-                    <div>{{ annonce.type_bien }}</div>
-                    <div>{{ annonce.surface }}m² · {{ annonce.pieces }} pièces · {{ annonce.chambres }} ch.</div>
-                  </div>
-                  <div v-if="annonce.date_publication" class="text-xs text-gray-500 mt-1">
-                    Publiée le {{ formatDate(annonce.date_publication) }}
-                  </div>
-                  <div v-if="annonce.mise_en_avant" class="mt-1">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                      <svg class="-ml-0.5 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                      Mise en avant
-                    </span>
-                  </div>
-                </td>
-                <td class="px-6 py-4">
-                  <div class="text-sm text-gray-600">
-                    <div class="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      {{ annonce.vues || 0 }} vues
-                    </div>
-                    <div class="flex items-center mt-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      {{ annonce.favoris || 0 }} favoris
-                    </div>
-                    <div class="flex items-center mt-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                      </svg>
-                      {{ annonce.messages || 0 }} messages
-                    </div>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span :class="getStatusClass(annonce.status)">
-                    {{ getStatusLabel(annonce.status) }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <!-- Boutons d'action -->
-                  <div class="flex justify-end space-x-2">
-                    <button 
-                      @click="viewListing(annonce.id)"
-                      class="text-gray-600 hover:text-gray-900"
-                      title="Voir l'annonce"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    </button>
-                    
-                    <button 
-                      @click="editListing(annonce.id)"
-                      class="text-cyan-600 hover:text-cyan-800"
-                      title="Modifier l'annonce"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    
-                    <!-- Bouton Suspendre/Réactiver -->
-                    <button 
-                      v-if="annonce.status === 'published'"
-                      @click="suspendListing(annonce.id)"
-                      class="text-amber-600 hover:text-amber-800"
-                      title="Suspendre l'annonce"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                    
-                    <button 
-                      v-if="annonce.status === 'suspended'"
-                      @click="reactivateListing(annonce.id)"
-                      class="text-green-600 hover:text-green-800"
-                      title="Réactiver l'annonce"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                    
-                    <!-- Options avancées -->
-                    <div class="relative">
-                      <button 
-                        @click="toggleOptionsMenu(annonce.id)"
-                        class="text-gray-500 hover:text-gray-700"
-                        title="Plus d'options"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                        </svg>
-                      </button>
-                      
-                      <!-- Menu déroulant -->
-                      <div 
-                        v-if="optionsMenuOpen === annonce.id" 
-                        class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-                        @click.away="optionsMenuOpen = null"
-                      >
-                        <!-- Déplacer vers un autre forfait -->
-                        <div v-if="canMoveToOtherForfait(annonce, forfait)" class="px-3 py-2 text-xs text-gray-700 font-medium">
-                          Déplacer vers :
-                        </div>
-                        <template v-if="canMoveToOtherForfait(annonce, forfait)">
-                          <a 
-                            v-for="targetForfait in getAvailableForfaits(forfait.id)" 
-                            :key="targetForfait.id"
-                            href="#" 
-                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            @click.prevent="moveListingToForfait(annonce.id, forfait.id, targetForfait.id)"
-                          >
-                            {{ targetForfait.nom }}
-                            <span class="text-xs text-gray-500">
-                              ({{ targetForfait.annonces.length }}/{{ targetForfait.limite_annonces }})
-                            </span>
-                          </a>
-                          <div class="border-t border-gray-100 my-1"></div>
-                        </template>
-                        
-                        <!-- Option de mise en avant -->
-                        <a 
-                          v-if="!annonce.mise_en_avant"
-                          href="#" 
-                          class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          @click.prevent="promoteListing(annonce.id)"
-                        >
-                          <span class="flex items-center">
-                            <svg class="mr-2 h-4 w-4 text-amber-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                            Mettre en avant
-                          </span>
-                        </a>
-                        
-                        <a 
-                          v-else
-                          href="#" 
-                          class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          @click.prevent="removePromotion(annonce.id)"
-                        >
-                          <span class="flex items-center">
-                            <svg class="mr-2 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
-                            Retirer mise en avant
-                          </span>
-                        </a>
-                        
-                        <!-- Supprimer -->
-                        <a 
-                          href="#" 
-                          class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                          @click.prevent="deleteListing(annonce.id)"
-                        >
-                          <span class="flex items-center">
-                            <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Supprimer
-                          </span>
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </button>
+                <button 
+                  v-if="order.status === 'active'"
+                  @click="renewOrder(order)" 
+                  class="text-amber-600 hover:text-amber-900"
+                >
+                  Renouveler
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Pagination (si nécessaire) -->
+      <div v-if="totalPages > 1" class="flex items-center justify-between mt-4">
+        <div class="flex-1 flex justify-between sm:hidden">
+          <button 
+            @click="currentPage > 1 && (currentPage--)" 
+            :disabled="currentPage === 1"
+            :class="[
+              currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50',
+              'relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md'
+            ]"
+          >
+            Précédent
+          </button>
+          <button 
+            @click="currentPage < totalPages && (currentPage++)" 
+            :disabled="currentPage === totalPages"
+            :class="[
+              currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50',
+              'ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md'
+            ]"
+          >
+            Suivant
+          </button>
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm text-gray-700">
+              Page <span class="font-medium">{{ currentPage }}</span> sur <span class="font-medium">{{ totalPages }}</span>
+            </p>
+          </div>
+          <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button
+                @click="currentPage = 1"
+                :disabled="currentPage === 1"
+                :class="[
+                  currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-500 hover:bg-gray-50',
+                  'relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 text-sm font-medium'
+                ]"
+              >
+                <span class="sr-only">Première page</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <button
+                v-for="page in displayedPages"
+                :key="page"
+                @click="currentPage = page"
+                :class="[
+                  page === currentPage 
+                    ? 'z-10 bg-cyan-50 border-cyan-500 text-cyan-600' 
+                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50',
+                  'relative inline-flex items-center px-4 py-2 border text-sm font-medium'
+                ]"
+              >
+                {{ page }}
+              </button>
+              <button
+                @click="currentPage = totalPages"
+                :disabled="currentPage === totalPages"
+                :class="[
+                  currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-500 hover:bg-gray-50',
+                  'relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium'
+                ]"
+              >
+                <span class="sr-only">Dernière page</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </nav>
+          </div>
         </div>
       </div>
     </div>
     
-    <!-- Modal de confirmation de déplacement d'annonce -->
-    <div v-if="moveModal.show" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg overflow-hidden shadow-xl max-w-md w-full mx-4">
-        <div class="bg-cyan-500 px-4 py-3">
-          <h3 class="text-lg font-medium text-white">Déplacer l'annonce</h3>
+    <!-- Modal de détails de commande -->
+    <div v-if="selectedOrder" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+      <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 md:mx-auto">
+        <div class="flex justify-between items-center p-4 border-b">
+          <h3 class="text-lg font-medium text-gray-900">
+            Détails de la commande #{{ selectedOrder.reference }}
+          </h3>
+          <button @click="selectedOrder = null" class="text-gray-400 hover:text-gray-500">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
         <div class="p-6">
-          <p class="mb-4">
-            Voulez-vous vraiment déplacer cette annonce du forfait <span class="font-medium">{{ moveModal.sourceForfaitName }}</span> vers le forfait <span class="font-medium">{{ moveModal.targetForfaitName }}</span> ?
-          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">Date de commande</h4>
+              <p class="text-sm text-gray-900">{{ formatDate(selectedOrder.date_created) }}</p>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">Statut</h4>
+              <p><span :class="getStatusClass(selectedOrder.status)">
+                {{ getStatusLabel(selectedOrder.status) }}
+              </span></p>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">Produit</h4>
+              <p class="text-sm text-gray-900">{{ selectedOrder.produit ? selectedOrder.produit.nom : 'Produit inconnu' }}</p>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">Montant</h4>
+              <p class="text-sm text-gray-900">{{ formatPrice(selectedOrder.montant) }}</p>
+            </div>
+            <div v-if="selectedOrder.date_expiration">
+              <h4 class="text-sm font-medium text-gray-500 mb-1">Date d'expiration</h4>
+              <p class="text-sm text-gray-900">{{ formatDate(selectedOrder.date_expiration) }}</p>
+            </div>
+            <div v-if="selectedOrder.mode_paiement">
+              <h4 class="text-sm font-medium text-gray-500 mb-1">Mode de paiement</h4>
+              <p class="text-sm text-gray-900">{{ selectedOrder.mode_paiement }}</p>
+            </div>
+          </div>
           
-          <div class="mt-6 flex justify-end space-x-3">
+          <div v-if="selectedOrder.details" class="mb-6">
+            <h4 class="text-sm font-medium text-gray-500 mb-1">Détails du produit</h4>
+            <p class="text-sm text-gray-900 bg-gray-50 p-3 rounded">{{ selectedOrder.details }}</p>
+          </div>
+          
+          <div v-if="selectedOrder.elements && selectedOrder.elements.length > 0" class="mb-6">
+            <h4 class="text-sm font-medium text-gray-500 mb-2">Éléments associés</h4>
+            <ul class="text-sm text-gray-900 bg-gray-50 p-3 rounded">
+              <li v-for="(element, index) in selectedOrder.elements" :key="index" class="mb-2 last:mb-0">
+                <a v-if="element.type === 'annonce' && element.id" 
+                   :href="`/annonces/detail-${element.id}`" 
+                   class="text-cyan-600 hover:underline">
+                  {{ element.titre || `Annonce #${element.id}` }}
+                </a>
+                <a v-else-if="element.type === 'publicite' && element.id" 
+                   :href="`/publicite?id=${element.id}`" 
+                   class="text-cyan-600 hover:underline">
+                  {{ element.titre || `Publicité #${element.id}` }}
+                </a>
+                <span v-else>{{ element.titre || `Élément #${element.id}` }}</span>
+              </li>
+            </ul>
+          </div>
+          
+          <div class="flex justify-end space-x-3 mt-6">
             <button 
-              @click="moveModal.show = false" 
-              class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+              @click="selectedOrder = null" 
+              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium rounded-md"
             >
-              Annuler
+              Fermer
             </button>
             <button 
-              @click="confirmMove" 
-              class="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700"
+              v-if="selectedOrder.status === 'active'"
+              @click="renewOrder(selectedOrder); selectedOrder = null" 
+              class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-md"
             >
-              Confirmer
+              Renouveler
             </button>
           </div>
         </div>
-      </div>
-    </div>
-      
-    <!-- Notification toast pour les messages de succès -->
-    <div 
-      v-if="notification.show" 
-      class="fixed bottom-5 right-5 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300"
-      :class="notification.show ? 'opacity-100' : 'opacity-0'"
-    >
-      <div class="flex">
-        <svg class="h-5 w-5 text-green-600 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>{{ notification.message }}</span>
       </div>
     </div>
   </div>
@@ -469,38 +383,72 @@ export default {
   methods: {
     // Récupérer les forfaits et annonces
     async fetchListings() {
-  this.loading = true;
-  this.error = null;
-  
-  try {
-    // Remplacer les données simulées par un appel API réel
-    const response = await fetch(`/api/directus/items/annonces?filter[user_id][_eq]=${this.userId}&fields=*`);
-    
-    if (!response.ok) {
-      throw new Error(`Erreur: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    // Adapter le format des données si nécessaire
-    this.forfaits = [
-      {
-        id: '1',
-        nom: 'Mes Annonces',
-        limite_annonces: 100, // Ou une autre valeur appropriée
-        date_expiration: '31/12/2025', // À ajuster selon votre logique métier
-        jours_restants: 365, // À calculer
-        annonces: data.data || []
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        // Appel API vers Directus via notre proxy
+        const response = await fetch(`/api/directus/items/user_forfaits?filter[user_id][_eq]=${this.userId}&fields=*,annonces.*`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.data) {
+          // Traitement des données
+          this.forfaits = result.data.map(forfait => ({
+            id: forfait.id,
+            nom: forfait.nom || 'Forfait sans nom',
+            limite_annonces: forfait.limite_annonces || 0,
+            date_expiration: this.formatDate(forfait.date_expiration),
+            jours_restants: this.getRemainingDays(forfait.date_expiration),
+            annonces: Array.isArray(forfait.annonces) ? forfait.annonces.map(annonce => ({
+              id: annonce.id,
+              titre: annonce.titre || 'Sans titre',
+              type_bien: annonce.type_bien || '',
+              localisation: annonce.localisation || '',
+              prix: annonce.prix || 0,
+              surface: annonce.surface || 0,
+              pieces: annonce.pieces || 0,
+              chambres: annonce.chambres || 0,
+              image: annonce.image_principale ? `/uploads/${annonce.image_principale}` : null,
+              status: annonce.status || 'pending',
+              date_publication: annonce.date_publication || null,
+              vues: annonce.vues || 0,
+              favoris: annonce.favoris || 0,
+              messages: annonce.messages || 0,
+              mise_en_avant: Boolean(annonce.mise_en_avant)
+            })) : []
+          }));
+        } else {
+          this.forfaits = [];
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des annonces:', error);
+        this.error = "Impossible de charger vos annonces. Veuillez réessayer.";
+      } finally {
+        this.loading = false;
       }
-    ];
+    },
     
-    this.totalItems = this.forfaits[0].annonces.length;
-  } catch (error) {
-    console.error('Erreur lors du chargement des annonces:', error);
-    this.error = "Impossible de charger vos annonces. Veuillez réessayer.";
-  } finally {
-    this.loading = false;
-  }
-},
+    // Calculer le nombre de jours restants
+    getRemainingDays(dateString) {
+      if (!dateString) return 0;
+      
+      const expiration = new Date(dateString);
+      const today = new Date();
+      
+      // Différence en millisecondes
+      const diffTime = expiration - today;
+      // Convertir en jours (arrondi supérieur)
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return Math.max(0, diffDays);
+    },
     
     // Filtrer les annonces d'un forfait selon les critères
     filteredAnnonces(forfait) {
@@ -603,11 +551,21 @@ export default {
     async suspendListing(annonceId) {
       if (confirm('Êtes-vous sûr de vouloir suspendre cette annonce ? Elle ne sera plus visible pour les visiteurs jusqu\'à sa réactivation.')) {
         try {
-          // À remplacer par l'appel API réel
-          // await this.$axios.$patch(`/api/annonces/${annonceId}`, { status: 'suspended' });
+          // Appel API pour modifier le statut
+          const response = await fetch(`/api/directus/items/annonces/${annonceId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ status: 'suspended' })
+          });
           
-          // Simulation pour le développement
-          // Trouver l'annonce dans les forfaits
+          if (!response.ok) {
+            throw new Error(`Erreur HTTP: ${response.status}`);
+          }
+          
+          // Mettre à jour localement
           for (const forfait of this.forfaits) {
             const index = forfait.annonces.findIndex(a => a.id === annonceId);
             if (index !== -1) {
@@ -627,11 +585,21 @@ export default {
     // Réactiver une annonce
     async reactivateListing(annonceId) {
       try {
-        // À remplacer par l'appel API réel
-        // await this.$axios.$patch(`/api/annonces/${annonceId}`, { status: 'published' });
+        // Appel API pour modifier le statut
+        const response = await fetch(`/api/directus/items/annonces/${annonceId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ status: 'published' })
+        });
         
-        // Simulation pour le développement
-        // Trouver l'annonce dans les forfaits
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        // Mettre à jour localement
         for (const forfait of this.forfaits) {
           const index = forfait.annonces.findIndex(a => a.id === annonceId);
           if (index !== -1) {
@@ -661,10 +629,16 @@ export default {
     async deleteListing(annonceId) {
       if (confirm('Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.')) {
         try {
-          // À remplacer par l'appel API réel
-          // await this.$axios.$delete(`/api/annonces/${annonceId}`);
+          // Appel API pour supprimer l'annonce
+          const response = await fetch(`/api/directus/items/annonces/${annonceId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+          });
           
-          // Simulation pour le développement
+          if (!response.ok) {
+            throw new Error(`Erreur HTTP: ${response.status}`);
+          }
+          
           // Supprimer l'annonce du forfait correspondant
           for (const forfait of this.forfaits) {
             const index = forfait.annonces.findIndex(a => a.id === annonceId);
@@ -685,11 +659,21 @@ export default {
     // Mettre en avant une annonce
     async promoteListing(annonceId) {
       try {
-        // À remplacer par l'appel API réel
-        // await this.$axios.$post(`/api/annonces/${annonceId}/promote`);
+        // Appel API pour mettre à jour l'annonce
+        const response = await fetch(`/api/directus/items/annonces/${annonceId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ mise_en_avant: true })
+        });
         
-        // Simulation pour le développement
-        // Trouver l'annonce dans les forfaits
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        // Mettre à jour localement
         for (const forfait of this.forfaits) {
           const index = forfait.annonces.findIndex(a => a.id === annonceId);
           if (index !== -1) {
@@ -709,11 +693,21 @@ export default {
     // Retirer la mise en avant d'une annonce
     async removePromotion(annonceId) {
       try {
-        // À remplacer par l'appel API réel
-        // await this.$axios.$delete(`/api/annonces/${annonceId}/promote`);
+        // Appel API pour mettre à jour l'annonce
+        const response = await fetch(`/api/directus/items/annonces/${annonceId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ mise_en_avant: false })
+        });
         
-        // Simulation pour le développement
-        // Trouver l'annonce dans les forfaits
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        // Mettre à jour localement
         for (const forfait of this.forfaits) {
           const index = forfait.annonces.findIndex(a => a.id === annonceId);
           if (index !== -1) {
@@ -790,13 +784,21 @@ export default {
       try {
         const { annonceId, sourceForfaitId, targetForfaitId } = this.moveModal;
         
-        // À remplacer par l'appel API réel
-        // await this.$axios.$post(`/api/annonces/${annonceId}/move`, {
-        //   source_forfait_id: sourceForfaitId,
-        //   target_forfait_id: targetForfaitId
-        // });
+        // Appel API pour mettre à jour l'annonce
+        const response = await fetch(`/api/directus/items/annonces/${annonceId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ forfait_id: targetForfaitId })
+        });
         
-        // Simulation pour le développement
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        // Mettre à jour localement
         const sourceForfait = this.forfaits.find(f => f.id === sourceForfaitId);
         const targetForfait = this.forfaits.find(f => f.id === targetForfaitId);
         

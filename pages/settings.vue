@@ -56,6 +56,8 @@
         <ProfileTab 
           v-if="activeTab === 'profile'" 
           :user="user" 
+          :user-type="userType"
+          :is-active="activeTab === 'profile'"
           @update-success="handleUpdateSuccess" 
         />
         <NotificationsTab 
@@ -318,10 +320,6 @@ export default {
         
         // Si l'utilisateur est trouvé, charger des données supplémentaires
         if (userFound) {
-          // Initialiser les favoris de l'utilisateur
-          const { initFavorites } = useFavorites();
-          initFavorites(this.user.id);
-          
           // Récupérer le nombre de messages non lus
           await this.fetchUnreadMessagesCount();
         } else {
@@ -386,12 +384,28 @@ export default {
     
     // Sélectionner un onglet et mettre à jour l'URL
     selectTab(tabId) {
+      const previousTab = this.activeTab;
       this.activeTab = tabId;
       
       // Mettre à jour l'URL sans recharger la page
       const url = new URL(window.location);
       url.searchParams.set('tab', tabId);
       window.history.pushState({}, '', url);
+      
+      // Émettre un événement personnalisé pour indiquer le changement d'onglet
+      if (tabId === 'profile') {
+        // Utiliser setTimeout pour s'assurer que le composant est monté
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('tab-profile-activated'));
+          console.log('Événement tab-profile-activated émis');
+        }, 100);
+      }
+      
+      // Si nécessaire, effectuer des actions supplémentaires selon les onglets
+      if (previousTab !== tabId) {
+        console.log(`Changement d'onglet: ${previousTab} -> ${tabId}`);
+        // Autres actions si nécessaire...
+      }
     },
     
     // Vérifier l'onglet demandé dans l'URL

@@ -11,10 +11,11 @@
           <NuxtLink to="/annonces" class="text-gray-700 hover:text-cyan-600">Tous les biens</NuxtLink>
           <NuxtLink to="/annonces?category=maisons" class="text-gray-700 hover:text-cyan-600">Maisons</NuxtLink>
           <NuxtLink to="/annonces?category=immeubles" class="text-gray-700 hover:text-cyan-600">Immeubles</NuxtLink>
+          
           <!-- Menu déroulant "Autres" -->
           <div class="relative">
             <button 
-              @click="toggleDropdown" 
+              @click="toggleAutresDropdown" 
               class="text-gray-700 hover:text-cyan-600 flex items-center"
             >
               Autres
@@ -23,9 +24,9 @@
               </svg>
             </button>
             <div 
-              v-show="isDropdownOpen" 
+              v-show="isAutresDropdownOpen" 
               class="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md py-1 z-10"
-              @mouseleave="isDropdownOpen = false"
+              @mouseleave="isAutresDropdownOpen = false"
             >
               <NuxtLink to="/annonces?category=appartements" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Appartements</NuxtLink>
               <NuxtLink to="/annonces?category=construction" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Constructions</NuxtLink>
@@ -35,10 +36,11 @@
           </div>
           
           <span class="text-gray-300">|</span>
-          <!-- ajout phil  -->
+          
+          <!-- Menu déroulant "Services" -->
           <div class="relative">
             <button 
-              @click="toggleDropdown" 
+              @click="toggleServicesDropdown" 
               class="text-gray-700 hover:text-cyan-600 flex items-center"
             >
               Services
@@ -47,16 +49,16 @@
               </svg>
             </button>
             <div 
-              v-show="isDropdownOpen" 
+              v-show="isServicesDropdownOpen" 
               class="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md py-1 z-10"
-              @mouseleave="isDropdownOpen = false"
+              @mouseleave="isServicesDropdownOpen = false"
             >
               <NuxtLink to="/about" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">A propos</NuxtLink>
               <NuxtLink to="/faq" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">FAQ</NuxtLink>
               <NuxtLink to="/testimonials" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Témoignages</NuxtLink>
             </div>
           </div>
-          <!-- fin ajout phil -->
+          
           <NuxtLink to="/articles" class="text-gray-700 hover:text-cyan-600">Articles utiles</NuxtLink>
           <NuxtLink to="/tarifs" class="text-gray-700 hover:text-cyan-600">Tarifs</NuxtLink>
           <NuxtLink to="/publicite" class="text-gray-700 hover:text-cyan-600">Pub</NuxtLink>
@@ -68,7 +70,38 @@
           <NuxtLink to="/annonces/ajouter" class="bg-cyan-500 text-white px-4 py-2 rounded hover:bg-cyan-600">
             + Ajouter une annonce
           </NuxtLink>
-          <NuxtLink to="/login" class="hover:text-blue-600">Connexion</NuxtLink>
+          
+          <!-- Menu utilisateur non authentifié -->
+          <template v-if="!isAuthenticated">
+            <NuxtLink to="/login" class="hover:text-blue-600">Connexion</NuxtLink>
+          </template>
+          
+          <!-- Menu utilisateur authentifié -->
+          <div v-else class="relative">
+            <button 
+              @click="toggleUserDropdown" 
+              class="text-gray-700 hover:text-cyan-600 flex items-center"
+            >
+              Mon compte
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div 
+              v-show="isUserDropdownOpen" 
+              class="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md py-1 z-10"
+              @mouseleave="isUserDropdownOpen = false"
+            >
+              <NuxtLink to="/settings" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Tableau de bord</NuxtLink>
+              <button 
+                @click="logout" 
+                class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-cyan-50"
+              >
+                Déconnexion
+              </button>
+            </div>
+          </div>
+          
           <!-- Panier (à implémenter avec Stripe) -->
           <button class="relative">
             <span class="sr-only">Panier</span>
@@ -99,31 +132,96 @@
           <NuxtLink to="/blog" class="hover:text-blue-600">Articles</NuxtLink>
           <NuxtLink to="/tarifs" class="hover:text-blue-600">Tarifs</NuxtLink>
           <NuxtLink to="/publicite" class="hover:text-blue-600">Pub</NuxtLink>
+          
+          <!-- Ajout des liens d'authentification pour mobile -->
+          <div class="pt-4 border-t border-gray-200">
+            <template v-if="!isAuthenticated">
+              <NuxtLink to="/login" class="hover:text-blue-600">Connexion</NuxtLink>
+            </template>
+            <template v-else>
+              <NuxtLink to="/settings" class="hover:text-blue-600">Tableau de bord</NuxtLink>
+              <button @click="logout" class="mt-2 hover:text-blue-600">Déconnexion</button>
+            </template>
+          </div>
         </nav>
       </div>
     </div>
   </header>
 </template>
 
-<script setup>
-import { ref } from 'vue';
+<script>
+import { ref, onMounted, computed } from 'vue';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { useRouter } from 'vue-router';
 
-const mobileMenuOpen = ref(false);
-
-const isDropdownOpen = ref(false);
-
-const toggleDropdown = () => {
-  isDropdownOpen.value = !isDropdownOpen.value;
+export default {
+  setup() {
+    const mobileMenuOpen = ref(false);
+    
+    // Dropdowns séparés pour chaque menu
+    const isAutresDropdownOpen = ref(false);
+    const isServicesDropdownOpen = ref(false);
+    const isUserDropdownOpen = ref(false);
+    
+    // Router pour la redirection après déconnexion
+    const router = useRouter();
+    
+    // Store d'authentification
+    const authStore = useAuthStore();
+    
+    // Toggle functions pour chaque dropdown
+    const toggleAutresDropdown = () => {
+      isAutresDropdownOpen.value = !isAutresDropdownOpen.value;
+      isServicesDropdownOpen.value = false;
+      isUserDropdownOpen.value = false;
+    };
+    
+    const toggleServicesDropdown = () => {
+      isServicesDropdownOpen.value = !isServicesDropdownOpen.value;
+      isAutresDropdownOpen.value = false;
+      isUserDropdownOpen.value = false;
+    };
+    
+    const toggleUserDropdown = () => {
+      isUserDropdownOpen.value = !isUserDropdownOpen.value;
+      isAutresDropdownOpen.value = false;
+      isServicesDropdownOpen.value = false;
+    };
+    
+    // Déconnexion
+    const logout = async () => {
+      try {
+        await authStore.logout();
+        router.push('/');
+      } catch (error) {
+        console.error('Erreur lors de la déconnexion:', error);
+      }
+    };
+    
+    // Fermer les menus au clic à l'extérieur
+    onMounted(() => {
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.relative')) {
+          isAutresDropdownOpen.value = false;
+          isServicesDropdownOpen.value = false;
+          isUserDropdownOpen.value = false;
+        }
+      });
+    });
+    
+    return {
+      mobileMenuOpen,
+      isAutresDropdownOpen,
+      isServicesDropdownOpen,
+      isUserDropdownOpen,
+      toggleAutresDropdown,
+      toggleServicesDropdown,
+      toggleUserDropdown,
+      logout,
+      isAuthenticated: computed(() => authStore.isAuthenticated)
+    };
+  }
 };
-
-// Fermer le menu au clic à l'extérieur
-onMounted(() => {
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.relative')) {
-      isDropdownOpen.value = false;
-    }
-  });
-});
 </script>
 
 <style scoped>

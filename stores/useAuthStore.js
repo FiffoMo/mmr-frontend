@@ -1,4 +1,4 @@
-// Fichier à placer dans: mmr-frontend/stores/useAuthStore.js
+// stores/useAuthStore.js
 import { defineStore } from 'pinia';
 
 export const useAuthStore = defineStore('auth', {
@@ -6,8 +6,7 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     token: null,
     loading: false,
-    error: null,
-    isInitialized: false
+    error: null
   }),
   
   getters: {
@@ -20,7 +19,8 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     // Initialiser l'état d'authentification depuis le localStorage
     initAuth() {
-      if (process.client) {
+      // Vérifier si le code s'exécute dans un navigateur
+      if (typeof window !== 'undefined') {
         const token = localStorage.getItem('auth_token');
         const userData = localStorage.getItem('auth_user');
         
@@ -36,15 +36,6 @@ export const useAuthStore = defineStore('auth', {
             }
           }
         }
-        
-        // Définir le cookie pour que le serveur puisse l'utiliser
-        if (this.token) {
-          const expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + 7); // Cookie valide 7 jours
-          document.cookie = `auth_token=${this.token}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Lax`;
-        }
-        
-        this.isInitialized = true;
       }
     },
     
@@ -53,17 +44,10 @@ export const useAuthStore = defineStore('auth', {
       this.token = token;
       this.user = user;
       
-      if (process.client) {
+      if (typeof window !== 'undefined') {
         localStorage.setItem('auth_token', token);
         localStorage.setItem('auth_user', JSON.stringify(user));
-        
-        // Définir le cookie pour que le serveur puisse l'utiliser
-        const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + 7); // Cookie valide 7 jours
-        document.cookie = `auth_token=${token}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Lax`;
       }
-      
-      this.isInitialized = true;
     },
     
     // Effacer l'état d'authentification
@@ -71,12 +55,9 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       this.user = null;
       
-      if (process.client) {
+      if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
-        
-        // Supprimer le cookie
-        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
       }
     },
     
@@ -86,14 +67,20 @@ export const useAuthStore = defineStore('auth', {
       this.error = null;
       
       try {
-        const directusUrl = process.env.DIRECTUS_URL || 'http://localhost:8055';
+        if (!email || !password) {
+          throw new Error('Email et mot de passe requis');
+        }
         
-        const response = await fetch(`${directusUrl}/auth/login`, {
+        const response = await fetch('/api/directus/auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ email, password })
+          credentials: 'include',
+          body: JSON.stringify({
+            email: email,
+            password: password
+          })
         });
         
         if (!response.ok) {
@@ -103,11 +90,16 @@ export const useAuthStore = defineStore('auth', {
         
         const data = await response.json();
         
+        if (!data.data || !data.data.access_token) {
+          throw new Error('Token d\'accès manquant dans la réponse');
+        }
+        
         // Récupérer les informations utilisateur
-        const userResponse = await fetch(`${directusUrl}/users/me`, {
+        const userResponse = await fetch('/api/directus/users/me', {
           headers: {
             'Authorization': `Bearer ${data.data.access_token}`
-          }
+          },
+          credentials: 'include'
         });
         
         if (!userResponse.ok) {
@@ -121,6 +113,47 @@ export const useAuthStore = defineStore('auth', {
         
         return userData.data;
       } catch (error) {
+        console.error('Erreur de connexion:', error);
+        this.error = error.message;
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Inscription d'un nouvel utilisateur
+    async register(firstName, lastName, email, password) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        // Déterminer l'ID du rôle "Utilisateur"
+        const roleId = '27b07ae3-cc05-402a-947e-23d847b0f329';
+        
+        // Créer un nouvel utilisateur via l'API Directus
+        const response = await fetch('/api/directus/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            first_name: firstName,
+            last_name: lastName,
+            email: email.trim(),
+            password: password,
+            role: roleId
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.errors?.[0]?.message || 'Erreur lors de la création du compte');
+        }
+        
+        // Se connecter automatiquement après l'inscription
+        return await this.login(email, password);
+      } catch (error) {
         this.error = error.message;
         throw error;
       } finally {
@@ -133,60 +166,102 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true;
       
       try {
-        const directusUrl = process.env.DIRECTUS_URL || 'http://localhost:8055';
-        
         if (this.token) {
-          await fetch(`${directusUrl}/auth/logout`, {
+          // Appel à l'API pour la déconnexion
+          await fetch('/api/directus/auth/logout', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${this.token}`
+            },
+            credentials: 'include'
+          });
+        }
+        
+        // Suppression des cookies
+        if (typeof window !== 'undefined') {
+          document.cookie.split(";").forEach((c) => {
+            const cookieName = c.split("=")[0].trim();
+            if (cookieName.includes("directus") || cookieName.includes("auth")) {
+              document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
             }
           });
         }
       } catch (error) {
         console.error('Erreur lors de la déconnexion:', error);
       } finally {
+        // Effacer les données d'authentification
         this.clearAuth();
+        
+        // Forcer une actualisation complète de la page
+        if (typeof window !== 'undefined') {
+          window.location.replace('/');
+        }
+        
         this.loading = false;
       }
     },
     
-    // Mettre à jour les informations utilisateur
-    updateUser(userData) {
-      this.user = { ...this.user, ...userData };
+    // Demander une réinitialisation de mot de passe
+    async requestPasswordReset(email, resetUrl) {
+      this.loading = true;
+      this.error = null;
       
-      if (process.client) {
-        localStorage.setItem('auth_user', JSON.stringify(this.user));
+      try {
+        const response = await fetch('/api/directus/auth/password/request', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            reset_url: resetUrl
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.errors?.[0]?.message || 'Erreur lors de la demande de réinitialisation');
+        }
+        
+        // Retourne true en cas de succès
+        return true;
+      } catch (error) {
+        this.error = error.message;
+        throw error;
+      } finally {
+        this.loading = false;
       }
     },
     
-    // Vérifier si le token est valide
-    async checkToken() {
-      if (!this.token) return false;
+    // Réinitialiser le mot de passe
+    async resetPassword(token, password) {
+      this.loading = true;
+      this.error = null;
       
       try {
-        const directusUrl = process.env.DIRECTUS_URL || 'http://localhost:8055';
-        
-        const response = await fetch(`${directusUrl}/users/me`, {
+        const response = await fetch('/api/directus/auth/password/reset', {
+          method: 'POST',
           headers: {
-            'Authorization': `Bearer ${this.token}`
-          }
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            token,
+            password
+          })
         });
         
-        if (response.ok) {
-          const userData = await response.json();
-          this.user = userData.data;
-          return true;
-        } else {
-          // Si le token est invalide, on nettoie l'authentification
-          console.warn('Token invalide, déconnexion...');
-          this.clearAuth();
-          return false;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.errors?.[0]?.message || 'Erreur lors de la réinitialisation du mot de passe');
         }
+        
+        // Retourne true en cas de succès
+        return true;
       } catch (error) {
-        console.error('Erreur lors de la vérification du token:', error);
-        this.clearAuth();
-        return false;
+        this.error = error.message;
+        throw error;
+      } finally {
+        this.loading = false;
       }
     }
   }

@@ -148,21 +148,31 @@
 </template>
 
 <script>
-import { useDirectusService } from '@/composables/useDirectusService';
+import { useDirectusApi } from '@/composables/useDirectusApi';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export default {
   name: 'HighlightTab',
   
+  props: {
+    userId: {
+      type: String,
+      default: null
+    },
+    user: {
+      type: Object,
+      default: null
+    }
+  },
+  
+  emits: ['update-success'],
+  
   setup() {
-    // Utiliser le service API Directus (mais nous utiliserons des données simulées pour le développement)
+    // Utiliser le service API Directus
     const { 
       loading: apiLoading, 
-      error: apiError,
-      getActiveHighlight,
-      getUserListings,
-      updateHighlightedListing
-    } = useDirectusService();
+      error: apiError
+    } = useDirectusApi();
     
     // Utiliser le store d'authentification
     const authStore = useAuthStore();
@@ -170,9 +180,6 @@ export default {
     return {
       apiLoading,
       apiError,
-      getActiveHighlight,
-      getUserListings,
-      updateHighlightedListing,
       authStore
     };
   },
@@ -182,12 +189,38 @@ export default {
       loading: false,
       loadingAnnonces: false,
       saving: false,
-      savingHighlightId: null,
       error: null,
+      saveMessage: null,
+      saveError: false,
       
-      highlights: [],
-      annonces: []
+      highlight: null,
+      annonces: [],
+      selectedAnnonceId: null
     };
+  },
+  
+  computed: {
+    // Vérifie si la mise en avant est expirée
+    isExpired() {
+      if (!this.highlight || !this.highlight.date_expiration) return false;
+      return new Date(this.highlight.date_expiration) < new Date();
+    },
+    
+    // Récupère l'annonce sélectionnée
+    selectedAnnonce() {
+      if (!this.selectedAnnonceId) return null;
+      return this.annonces.find(annonce => annonce.id === this.selectedAnnonceId);
+    },
+    
+    // URL de base Directus
+    directusUrl() {
+      return this.$config?.public?.directusUrl || process.env.DIRECTUS_URL || 'http://localhost:8055';
+    },
+    
+    // Récupérer l'ID utilisateur effectif
+    effectiveUserId() {
+      return this.userId || (this.user ? this.user.id : null) || this.authStore.user?.id;
+    }
   },
   
   mounted() {
@@ -199,132 +232,49 @@ export default {
   },
   
   methods: {
-    // Récupérer l'annonce sélectionnée pour une mise en avant
-    getSelectedAnnonce(highlight) {
-      if (!highlight.selectedAnnonceId) return null;
-      return this.annonces.find(annonce => annonce.id === highlight.selectedAnnonceId);
-    },
-    
     // Récupérer les données de mise en avant
     async fetchHighlightData() {
       this.loading = true;
       this.error = null;
       
       try {
-        // Pour le développement, utilisons des données simulées
-        // Données fictives pour plusieurs mises en avant
-        const mockHighlightData = [
-          {
-            id: '123',
-            date_creation: '2023-01-15T10:00:00',
-            date_expiration: '2025-06-30T23:59:59', // Date future
-            annonce: {
-              id: '201',
-              titre: 'Appartement 3 pièces avec terrasse',
-              prix: 450000
-            },
-            user: '1',
-            status: 'active',
-            commande: {
-              id: '1001',
-              reference: 'CMD-1001',
-              date: '2023-01-15T10:00:00'
-            },
-            isExpired: false,
-            daysLeft: 459, // Calculé à partir de date_expiration
-            selectedAnnonceId: '201', // Initialisé avec l'annonce actuelle
-            saveMessage: null,
-            saveError: false
-          },
-          {
-            id: '124',
-            date_creation: '2022-11-10T09:30:00',
-            date_expiration: '2023-02-10T23:59:59', // Date passée
-            annonce: {
-              id: '202',
-              titre: 'Studio meublé proche métro',
-              prix: 220000
-            },
-            user: '1',
-            status: 'expired',
-            commande: {
-              id: '982',
-              reference: 'CMD-982',
-              date: '2022-11-10T09:30:00'
-            },
-            isExpired: true,
-            daysLeft: 0,
-            selectedAnnonceId: '202',
-            saveMessage: null,
-            saveError: false
-          },
-          {
-            id: '125',
-            date_creation: '2023-03-22T14:45:00',
-            date_expiration: '2025-04-22T23:59:59', // Date future
-            annonce: {
-              id: '203',
-              titre: 'Maison 5 pièces avec jardin',
-              prix: 980000
-            },
-            user: '1',
-            status: 'active',
-            commande: {
-              id: '1050',
-              reference: 'CMD-1050',
-              date: '2023-03-22T14:45:00'
-            },
-            isExpired: false,
-            daysLeft: 390,
-            selectedAnnonceId: '203',
-            saveMessage: null,
-            saveError: false
-          }
-        ];
-        
-        // En mode production, utilisez cette partie du code à la place des données simulées
-        /*
-        // Utiliser le service Directus API pour récupérer toutes les mises en avant de l'utilisateur
-        const result = await this.getActiveHighlight();
-        
-        if (result.data && result.data.length > 0) {
-          // Transformer les données pour ajouter les propriétés nécessaires
-          this.highlights = result.data.map(highlight => {
-            const now = new Date();
-            const expiration = new Date(highlight.date_expiration);
-            const isExpired = expiration < now;
-            const daysLeft = isExpired ? 0 : Math.ceil((expiration - now) / (1000 * 60 * 60 * 24));
-            
-            return {
-              ...highlight,
-              isExpired,
-              daysLeft,
-              selectedAnnonceId: highlight.annonce ? highlight.annonce.id : null,
-              saveMessage: null,
-              saveError: false
-            };
-          });
-        } else {
-          this.highlights = [];
+        // Vérifier si nous avons un ID utilisateur
+        if (!this.effectiveUserId) {
+          console.error('ID utilisateur non disponible');
+          this.error = "Impossible de charger vos données: utilisateur non identifié.";
+          return;
         }
-        */
         
-        // Utiliser les données simulées pour le développement
-        this.highlights = mockHighlightData;
+        console.log('Chargement des données de mise en avant pour l\'utilisateur:', this.effectiveUserId);
         
-        // Trier les highlights: actifs d'abord, puis par date d'expiration
-        this.highlights.sort((a, b) => {
-          if (a.isExpired && !b.isExpired) return 1;
-          if (!a.isExpired && b.isExpired) return -1;
-          return new Date(a.date_expiration) - new Date(b.date_expiration);
+        // Appeler l'API Directus via notre proxy
+        const response = await fetch(`/api/directus/items/user_highlights?filter[user_id][_eq]=${this.effectiveUserId}&fields=*,annonce.*`, {
+          credentials: 'include'
         });
         
-        // Si on a des mises en avant, charger les annonces disponibles
-        if (this.highlights.length > 0) {
-          this.fetchAnnonces();
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.data && result.data.length > 0) {
+          this.highlight = result.data[0];
+          
+          // Si on a une mise en avant active, on charge les annonces disponibles
+          if (!this.isExpired) {
+            this.fetchAnnonces();
+            
+            // Présélectionner l'annonce actuelle
+            if (this.highlight.annonce) {
+              this.selectedAnnonceId = this.highlight.annonce.id;
+            }
+          }
+        } else {
+          this.highlight = null;
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des mises en avant:', error);
+        console.error('Erreur lors du chargement de la mise en avant:', error);
         this.error = "Impossible de charger vos données de mise en avant. Veuillez réessayer.";
       } finally {
         this.loading = false;
@@ -336,126 +286,75 @@ export default {
       this.loadingAnnonces = true;
       
       try {
-        // Données simulées pour les annonces disponibles
-        const mockAnnonces = [
-          {
-            id: '201',
-            titre: 'Appartement 3 pièces avec terrasse',
-            localisation: 'Paris 11e',
-            prix: 450000,
-            status: 'published',
-            image_principale: null // Dans un cas réel, ce serait l'ID de l'image
-          },
-          {
-            id: '202',
-            titre: 'Studio meublé proche métro',
-            localisation: 'Paris 15e',
-            prix: 220000,
-            status: 'published',
-            image_principale: null
-          },
-          {
-            id: '203',
-            titre: 'Maison 5 pièces avec jardin',
-            localisation: 'Suresnes',
-            prix: 980000,
-            status: 'published',
-            image_principale: null
-          },
-          {
-            id: '204',
-            titre: 'Duplex avec vue panoramique',
-            localisation: 'Lyon 6e',
-            prix: 580000,
-            status: 'published',
-            image_principale: null
-          }
-        ];
+        // Appeler l'API Directus via notre proxy
+        const response = await fetch(`/api/directus/items/annonces?filter[user_id][_eq]=${this.effectiveUserId}&filter[status][_in]=active,published&fields=*`, {
+          credentials: 'include'
+        });
         
-        // En mode production, utilisez cette partie du code à la place des données simulées
-        /*
-        // Utiliser le service Directus API pour récupérer les annonces de l'utilisateur
-        const result = await this.getUserListings();
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
         
-        if (result.data) {
+        const result = await response.json();
+        
+        if (result.data && Array.isArray(result.data)) {
           // Filtrer pour ne garder que les annonces actives
-          this.annonces = result.data.filter(annonce => annonce.status === 'active' || annonce.status === 'published');
+          this.annonces = result.data;
         } else {
           this.annonces = [];
         }
-        */
-        
-        // Utiliser les données simulées pour le développement
-        this.annonces = mockAnnonces;
-        
-        // Simuler une latence
-        await new Promise(resolve => setTimeout(resolve, 400));
       } catch (error) {
         console.error('Erreur lors du chargement des annonces:', error);
-        this.annonces = []; // En cas d'erreur, on initialise avec un tableau vide
       } finally {
         this.loadingAnnonces = false;
       }
     },
     
     // Mettre à jour l'annonce mise en avant
-    async updateHighlight(highlight) {
-      const annonceId = highlight.selectedAnnonceId;
-      if (!annonceId) return;
+    async updateHighlight() {
+      if (!this.selectedAnnonceId || !this.highlight) return;
       
-      this.savingHighlightId = highlight.id;
       this.saving = true;
+      this.saveMessage = null;
+      this.saveError = false;
       
       try {
-        // Simuler la mise à jour pour le développement
-        console.log(`Mise à jour de la mise en avant ${highlight.id}: annonce ${annonceId}`);
+        // Appeler l'API Directus via notre proxy
+        const response = await fetch(`/api/directus/items/user_highlights/${this.highlight.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ annonce_id: this.selectedAnnonceId })
+        });
         
-        // En mode production, utilisez cette partie du code
-        /*
-        // Utiliser le service Directus API pour mettre à jour la mise en avant
-        await this.updateHighlightedListing(highlight.id, annonceId);
-        */
-        
-        // Mise à jour locale
-        const selectedAnnonce = this.annonces.find(a => a.id === annonceId);
-        const index = this.highlights.findIndex(h => h.id === highlight.id);
-        
-        if (index !== -1 && selectedAnnonce) {
-          // Mettre à jour l'annonce dans le highlight
-          this.highlights[index].annonce = selectedAnnonce;
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
         }
         
-        // Définir le message de succès pour cette mise en avant
-        highlight.saveMessage = "Votre annonce mise en avant a été mise à jour avec succès.";
-        highlight.saveError = false;
+        // Mise à jour locale
+        this.highlight = {
+          ...this.highlight,
+          annonce: this.selectedAnnonce
+        };
         
-        // Simuler une latence
-        await new Promise(resolve => setTimeout(resolve, 500));
+        this.saveMessage = "Votre annonce mise en avant a été mise à jour avec succès.";
+        
+        // Émettre l'événement de succès vers le parent
+        this.$emit('update-success', this.saveMessage);
       } catch (error) {
         console.error('Erreur lors de la mise à jour:', error);
-        highlight.saveMessage = "Une erreur est survenue lors de la mise à jour. Veuillez réessayer.";
-        highlight.saveError = true;
+        this.saveMessage = "Une erreur est survenue lors de la mise à jour. Veuillez réessayer.";
+        this.saveError = true;
       } finally {
         this.saving = false;
-        this.savingHighlightId = null;
         
         // Effacer le message après 3 secondes
         setTimeout(() => {
-          highlight.saveMessage = null;
+          this.saveMessage = null;
         }, 3000);
       }
-    },
-    
-    // Renouveler une mise en avant expirée
-    renewHighlight(highlightId) {
-      // En mode réel, rediriger vers la page de tarifs ou de renouvellement
-      alert(`Redirection vers la page de renouvellement de la mise en avant ${highlightId}`);
-      
-      // Exemple:
-      // this.$router.push({
-      //   path: '/tarifs',
-      //   query: { renew: highlightId, type: 'highlight' }
-      // });
     },
     
     // Formater une date
@@ -468,6 +367,21 @@ export default {
         month: '2-digit',
         year: 'numeric'
       }).format(date);
+    },
+    
+    // Calculer le nombre de jours restants
+    getRemainingDays(dateString) {
+      if (!dateString) return 0;
+      
+      const expiration = new Date(dateString);
+      const today = new Date();
+      
+      // Différence en millisecondes
+      const diffTime = expiration - today;
+      // Convertir en jours (arrondi supérieur)
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return Math.max(0, diffDays);
     },
     
     // Formater un prix
@@ -483,12 +397,7 @@ export default {
     
     // Obtenir l'URL d'une image
     getImageUrl(imageId) {
-      if (!imageId) {
-        // Image de remplacement pour le développement
-        return 'https://placehold.co/300x200/e2e8f0/a0aec0?text=Propriété';
-      }
-      
-      // En mode production, utilisez cette partie pour récupérer l'image depuis Directus
+      if (!imageId) return null;
       return `/api/directus/assets/${imageId}`;
     }
   }

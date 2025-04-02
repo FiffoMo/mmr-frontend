@@ -184,6 +184,15 @@
 export default {
   name: 'MessagesTab',
   
+  props: {
+    userId: {
+      type: String,
+      required: true
+    }
+  },
+  
+  emits: ['messages-read'],
+  
   data() {
     return {
       // États de chargement
@@ -213,11 +222,9 @@ export default {
       
       const search = this.messageSearch.toLowerCase();
       return this.conversations.filter(conv => 
-        conv.otherParty.toLowerCase().includes(search) || 
-        conv.relatedTo.toLowerCase().includes(search) ||
-        (conv.messages && conv.messages.some(msg => 
-          msg.content.toLowerCase().includes(search)
-        ))
+        (conv.otherParty || '').toLowerCase().includes(search) || 
+        (conv.relatedTo || '').toLowerCase().includes(search) ||
+        (conv.lastMessage || '').toLowerCase().includes(search)
       );
     },
     
@@ -248,17 +255,6 @@ export default {
     if (conversationId) {
       this.loadSpecificConversation(conversationId);
     }
-    
-    // Simuler la réception de nouveaux messages
-    // Dans un cas réel, cela serait géré par WebSockets ou une requête de polling
-    this.setupMessagePolling();
-  },
-  
-  beforeUnmount() {
-    // Nettoyer l'intervalle de polling
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-    }
   },
   
   methods: {
@@ -267,40 +263,66 @@ export default {
       this.loading = true;
       
       try {
-        // Dans un cas réel, ce serait un appel API
-        // const response = await api.getConversations();
-        // this.conversations = response;
+        // Appel à l'API Directus via notre proxy pour récupérer les conversations
+        // où l'utilisateur est soit l'expéditeur soit le destinataire
+        const response = await fetch(`/api/directus/items/conversations?filter[user_created][_eq]=${this.userId}&fields=*,annonce.*&sort=-date_updated`);
         
-        // Pour l'exemple, nous utilisons des données fictives
-        this.conversations = [
-          {
-            id: 601,
-            otherParty: 'Jean Dupont',
-            lastMessage: 'Bonjour, est-ce que cette propriété est toujours disponible ?',
-            lastMessageDate: new Date('2025-03-12T14:35:00'),
-            lastReadByOther: new Date('2025-03-12T14:36:00'),
-            unread: true,
-            relatedTo: 'Appartement lumineux 4 pièces',
-            relatedToId: 201,
-            messages: []
-          },
-          {
-            id: 602,
-            otherParty: 'Marie Martin',
-            lastMessage: 'Parfait, je vous confirme la visite pour samedi à 14h.',
-            lastMessageDate: new Date('2025-03-10T10:15:00'),
-            lastReadByOther: new Date('2025-03-10T10:20:00'),
-            unread: false,
-            relatedTo: 'Maison de campagne rénovée',
-            relatedToId: 202,
-            messages: []
-          }
-        ];
+        if (!response.ok) {
+          throw new Error(`Erreur API: ${response.status}`);
+        }
         
-        // Simuler une latence
-        await new Promise(resolve => setTimeout(resolve, 800));
+        const data = await response.json();
+        
+        if (data && data.data) {
+          // Transformer les données pour correspondre à notre modèle
+          const conversationsPromises = data.data.map(async (conv) => {
+            // Récupérer les derniers messages de cette conversation
+            const messagesResponse = await fetch(`/api/directus/items/messages?filter[conversation_id][_eq]=${conv.id}&sort=-date_created&limit=1&fields=*,expediteur.*,destinataire.*`);
+            
+            if (!messagesResponse.ok) {
+              throw new Error(`Erreur API: ${messagesResponse.status}`);
+            }
+            
+            const messagesData = await messagesResponse.json();
+            const lastMessage = messagesData.data && messagesData.data.length > 0 ? messagesData.data[0] : null;
+            
+            // Déterminer l'autre partie (expéditeur ou destinataire)
+            let otherParty = "Utilisateur inconnu";
+            let unread = false;
+            
+            if (lastMessage) {
+              if (lastMessage.expediteur && lastMessage.expediteur.id !== this.userId) {
+                otherParty = `${lastMessage.expediteur.first_name || ''} ${lastMessage.expediteur.last_name || ''}`.trim();
+                unread = !lastMessage.lu;
+              } else if (lastMessage.destinataire && lastMessage.destinataire.id !== this.userId) {
+                otherParty = `${lastMessage.destinataire.first_name || ''} ${lastMessage.destinataire.last_name || ''}`.trim();
+              }
+            }
+            
+            return {
+              id: conv.id,
+              otherParty: otherParty,
+              lastMessage: lastMessage ? lastMessage.contenu : 'Nouvelle conversation',
+              lastMessageDate: lastMessage ? new Date(lastMessage.date_created) : new Date(conv.date_created),
+              lastReadByOther: lastMessage && lastMessage.date_lecture ? new Date(lastMessage.date_lecture) : null,
+              unread: unread,
+              relatedTo: conv.titre || (conv.annonce ? conv.annonce.titre : 'Discussion générale'),
+              relatedToId: conv.annonce ? conv.annonce.id : null,
+              messages: []
+            };
+          });
+          
+          this.conversations = await Promise.all(conversationsPromises);
+          
+          // Mettre à jour le nombre de messages non lus
+          const unreadCount = this.conversations.filter(conv => conv.unread).length;
+          this.$emit('messages-read', unreadCount);
+        } else {
+          this.conversations = [];
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des conversations:', error);
+        this.conversations = [];
       } finally {
         this.loading = false;
       }
@@ -322,7 +344,7 @@ export default {
         }
         
         // Trouver la conversation
-        const conversation = this.conversations.find(c => c.id === parseInt(id));
+        const conversation = this.conversations.find(c => c.id === parseInt(id) || c.id === id);
         if (conversation) {
           this.selectConversation(conversation);
         }
@@ -344,12 +366,14 @@ export default {
       // Charger les messages
       await this.fetchMessages(conversation.id);
       
-      // Marquer comme lu
+      // Marquer comme lu si nécessaire
       if (conversation.unread) {
+        await this.markConversationAsRead(conversation.id);
         conversation.unread = false;
         
-        // Dans un cas réel, on enverrait également cette info au serveur
-        // await api.markConversationAsRead(conversation.id);
+        // Mettre à jour le nombre de messages non lus
+        const unreadCount = this.conversations.filter(conv => conv.unread).length;
+        this.$emit('messages-read', unreadCount);
       }
       
       // Faire défiler vers le bas pour voir les derniers messages
@@ -360,60 +384,66 @@ export default {
       });
     },
     
+    // Marquer une conversation comme lue
+    async markConversationAsRead(conversationId) {
+      try {
+        // Récupérer tous les messages non lus adressés à l'utilisateur
+        const response = await fetch(`/api/directus/items/messages?filter[conversation_id][_eq]=${conversationId}&filter[destinataire][_eq]=${this.userId}&filter[lu][_eq]=false&fields=id`);
+        
+        if (!response.ok) {
+          throw new Error(`Erreur API: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data && data.data && data.data.length > 0) {
+          // Marquer chaque message comme lu
+          const updatePromises = data.data.map(message => 
+            fetch(`/api/directus/items/messages/${message.id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                lu: true,
+                date_lecture: new Date().toISOString()
+              })
+            })
+          );
+          
+          await Promise.all(updatePromises);
+        }
+      } catch (error) {
+        console.error('Erreur lors du marquage des messages comme lus:', error);
+      }
+    },
+    
     // Récupération des messages d'une conversation
     async fetchMessages(conversationId) {
       this.loadingMessages = true;
       
       try {
-        // Dans un cas réel, ce serait un appel API
-        // const response = await api.getConversationMessages(conversationId);
-        // this.activeConversation.messages = response;
+        const response = await fetch(`/api/directus/items/messages?filter[conversation_id][_eq]=${conversationId}&fields=*,expediteur.*,destinataire.*&sort=date_created`);
         
-        // Pour l'exemple, nous utilisons des données fictives
-        if (conversationId === 601) {
-          this.activeConversation.messages = [
-            {
-              sender: 'other',
-              content: 'Bonjour, je suis intéressé par votre appartement à Lyon. Est-il toujours disponible ?',
-              timestamp: new Date('2025-03-12T14:30:00')
-            },
-            {
-              sender: 'me',
-              content: 'Bonjour, oui l\'appartement est toujours disponible. Souhaitez-vous organiser une visite ?',
-              timestamp: new Date('2025-03-12T14:32:00')
-            },
-            {
-              sender: 'other',
-              content: 'Bonjour, est-ce que cette propriété est toujours disponible ?',
-              timestamp: new Date('2025-03-12T14:35:00')
-            }
-          ];
-        } else if (conversationId === 602) {
-          this.activeConversation.messages = [
-            {
-              sender: 'other',
-              content: 'Bonjour, je souhaiterais visiter votre maison ce weekend. Est-ce possible ?',
-              timestamp: new Date('2025-03-09T16:45:00')
-            },
-            {
-              sender: 'me',
-              content: 'Bien sûr, je suis disponible samedi à 14h ou dimanche à 11h. Quelle option vous conviendrait ?',
-              timestamp: new Date('2025-03-09T17:20:00')
-            },
-            {
-              sender: 'other',
-              content: 'Parfait, je vous confirme la visite pour samedi à 14h.',
-              timestamp: new Date('2025-03-10T10:15:00')
-            }
-          ];
+        if (!response.ok) {
+          throw new Error(`Erreur API: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data && data.data) {
+          // Transformer les messages au format attendu
+          this.activeConversation.messages = data.data.map(msg => ({
+            sender: msg.expediteur.id === this.userId ? 'me' : 'other',
+            content: msg.contenu,
+            timestamp: new Date(msg.date_created)
+          }));
         } else {
           this.activeConversation.messages = [];
         }
-        
-        // Simuler une latence
-        await new Promise(resolve => setTimeout(resolve, 600));
       } catch (error) {
         console.error('Erreur lors du chargement des messages:', error);
+        this.activeConversation.messages = [];
       } finally {
         this.loadingMessages = false;
       }
@@ -428,23 +458,75 @@ export default {
       this.sendingMessage = true;
       
       try {
-        const message = {
+        // Déterminer le destinataire (celui qui n'est pas l'utilisateur actuel)
+        // Pour cela, nous devons d'abord récupérer un message existant
+        let destinataireId = null;
+        
+        if (this.activeConversation.messages.length > 0) {
+          // Récupérer le premier message pour déterminer expéditeur/destinataire
+          const firstMessageResponse = await fetch(`/api/directus/items/messages?filter[conversation_id][_eq]=${this.activeConversation.id}&limit=1&fields=expediteur.*,destinataire.*`);
+          
+          if (firstMessageResponse.ok) {
+            const firstMessageData = await firstMessageResponse.json();
+            if (firstMessageData.data && firstMessageData.data.length > 0) {
+              const firstMessage = firstMessageData.data[0];
+              if (firstMessage.expediteur.id === this.userId) {
+                destinataireId = firstMessage.destinataire.id;
+              } else {
+                destinataireId = firstMessage.expediteur.id;
+              }
+            }
+          }
+        } else {
+          // Si c'est une nouvelle conversation, nous devons trouver l'autre utilisateur
+          // Dans un cas réel, vous auriez besoin de l'ID du destinataire
+          destinataireId = "USER_ID_TO_REPLACE"; // À remplacer par l'ID réel
+        }
+        
+        if (!destinataireId) {
+          throw new Error("Impossible de déterminer le destinataire");
+        }
+        
+        // Créer le message dans Directus
+        const messageData = {
+          conversation_id: this.activeConversation.id,
+          expediteur: this.userId,
+          destinataire: destinataireId,
+          contenu: this.newMessage,
+          lu: false,
+        };
+        
+        const response = await fetch('/api/directus/items/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(messageData)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur API: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Mettre à jour la conversation
+        await fetch(`/api/directus/items/conversations/${this.activeConversation.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            dernier_message: new Date().toISOString()
+          })
+        });
+        
+        // Ajouter le message à la conversation active
+        this.activeConversation.messages.push({
           sender: 'me',
           content: this.newMessage,
           timestamp: new Date()
-        };
-        
-        // Dans un cas réel, ce serait un appel API
-        // await api.sendMessage({
-        //   conversationId: this.activeConversation.id,
-        //   content: this.newMessage
-        // });
-        
-        // Simuler une latence
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Ajouter le message à la conversation active
-        this.activeConversation.messages.push(message);
+        });
         
         // Mise à jour du dernier message
         this.activeConversation.lastMessage = this.newMessage;
@@ -477,10 +559,17 @@ export default {
       }
       
       try {
-        // Dans un cas réel, ce serait un appel API
-        // await api.archiveConversation(this.activeConversation.id);
+        await fetch(`/api/directus/items/conversations/${this.activeConversation.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            status: 'archived'
+          })
+        });
         
-        // Simuler l'archivage en retirant la conversation de la liste
+        // Mettre à jour l'affichage local
         this.conversations = this.conversations.filter(c => c.id !== this.activeConversation.id);
         this.activeConversation = null;
         this.showActionsMenu = false;
@@ -499,47 +588,6 @@ export default {
       // Dans un cas réel, on ouvrirait un modal ou redirigerait vers un formulaire
       alert('Fonctionnalité de signalement à implémenter');
       this.showActionsMenu = false;
-    },
-    
-    // Configurer la simulation de réception de messages
-    setupMessagePolling() {
-      // Dans un cas réel, cela serait géré par WebSockets
-      this.pollingInterval = setInterval(() => {
-        this.simulateIncomingMessage();
-      }, 45000); // Toutes les 45 secondes
-    },
-    
-    // Simuler la réception d'un message
-    async simulateIncomingMessage() {
-      // 10% de chance de recevoir un message
-      if (Math.random() > 0.1 || this.conversations.length === 0) return;
-      
-      const randomConversationIndex = Math.floor(Math.random() * this.conversations.length);
-      const conversation = this.conversations[randomConversationIndex];
-      
-      const newMessage = {
-        sender: 'other',
-        content: 'Merci pour votre réponse. Puis-je avoir plus d\'informations sur cette propriété ?',
-        timestamp: new Date()
-      };
-      
-      // Mettre à jour la conversation
-      conversation.lastMessage = newMessage.content;
-      conversation.lastMessageDate = new Date();
-      conversation.unread = true;
-      
-      // Si c'est la conversation active, ajouter le message et marquer comme lu
-      if (this.activeConversation && this.activeConversation.id === conversation.id) {
-        this.activeConversation.messages.push(newMessage);
-        conversation.unread = false;
-        
-        // Faire défiler vers le bas
-        this.$nextTick(() => {
-          if (this.$refs.messagesContainer) {
-            this.$refs.messagesContainer.scrollTop = this.$refs.messagesContainer.scrollHeight;
-          }
-        });
-      }
     },
     
     // Formater l'heure d'un message
@@ -600,26 +648,3 @@ export default {
   }
 };
 </script>
-
-<style scoped>
-/* Style pour l'indicateur activé/désactivé */
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 14px;
-  width: 14px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #0ea5e9;
-}
-
-input:checked + .slider:before {
-  transform: translateX(18px);
-}
-</style>

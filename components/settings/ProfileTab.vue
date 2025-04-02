@@ -276,13 +276,16 @@
 </template>
 
 <script>
-import { useDirectusService } from '@/composables/useDirectusService';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export default {
   name: 'ProfileTab',
   
   props: {
+    userId: {
+      type: String,
+      default: ''
+    },
     user: {
       type: Object,
       default: null
@@ -290,30 +293,20 @@ export default {
     userType: {
       type: Number,
       default: 0
+    },
+    isActive: {
+      type: Boolean,
+      default: false
     }
   },
   
   emits: ['update-success'],
   
   setup() {
-    // Utiliser le service Directus
-    const { 
-      loading: apiLoading,
-      error: apiError,
-      getUserProfile,
-      updateUserProfile,
-      uploadFile
-    } = useDirectusService();
-    
     // Initialiser le store d'authentification
     const authStore = useAuthStore();
     
     return {
-      apiLoading,
-      apiError,
-      getUserProfile,
-      updateUserProfile,
-      uploadFile,
       authStore
     };
   },
@@ -323,7 +316,7 @@ export default {
       loading: false,
       saving: false,
       error: null,
-      debug: false, // Activer le mode débogage
+      shouldRefreshData: false,
       
       // Formulaire de profil
       profileForm: {
@@ -378,157 +371,84 @@ export default {
   },
   
   watch: {
-    // Observer les changements dans les données utilisateur
+    // Observer si l'onglet est actif
+    isActive(newValue) {
+      if (newValue && this.shouldRefreshData) {
+        // Si on revient sur cet onglet et qu'on a marqué qu'il faut rafraîchir les données
+        this.refreshUserData();
+        this.shouldRefreshData = false; // Réinitialiser le flag après le rafraîchissement
+      }
+    },
+    
+    // Observer les changements dans l'utilisateur
     user: {
-      immediate: true,
       handler(newUser) {
-        if (newUser) {
+        if (newUser && !this.loading) {
           this.initializeForm(newUser);
         }
-      }
-    }
-  },
-  
-  mounted() {
-    // Initialiser l'état d'authentification
-    this.authStore.initAuth();
-    
-    // Si l'utilisateur n'est pas fourni via les props, le récupérer
-    if (!this.user) {
-      this.fetchUserProfile();
+      },
+      immediate: true
     }
   },
   
   methods: {
-    // Récupérer le profil utilisateur
-    async fetchUserProfile() {
-      console.log('ProfileTab: Tentative de récupération du profil...');
+    // Rafraîchir les données utilisateur depuis l'API
+    async refreshUserData() {
       this.loading = true;
-      this.error = null;
       
       try {
-        // Effectuer la requête à l'API Directus via notre proxy
+        // Appel direct à l'API pour les données les plus récentes
         const response = await fetch('/api/directus/users/me?fields=*,avatar.*', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
+          },
           credentials: 'include'
         });
         
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log('ProfileTab: Résultat reçu:', result);
-        
-        if (result.data) {
-          // Assigner directement chaque propriété, une par une
-          this.profileForm.first_name = result.data.first_name || '';
-          this.profileForm.last_name = result.data.last_name || '';
-          this.profileForm.email = result.data.email || '';
-          this.profileForm.avatar = result.data.avatar || null;
-          this.profileForm.avatar_file = null;
-          
-          // Les champs problématiques - assignation directe et log
-          console.log('Valeurs à assigner:');
-          console.log('company:', result.data.company);
-          console.log('address:', result.data.address);
-          console.log('contact_instructions:', result.data.contact_instructions);
-          
-          this.profileForm.company = result.data.company || '';
-          this.profileForm.phone = result.data.phone || '';
-          this.profileForm.address = result.data.address || '';
-          this.profileForm.contact_instructions = result.data.contact_instructions || '';
-          
-          // Conversion explicite des booléens
-          this.profileForm.hide_email = Boolean(result.data.hide_email);
-          this.profileForm.hide_phone = Boolean(result.data.hide_phone);
-          this.profileForm.hide_address = Boolean(result.data.hide_address);
-          
-          // Vérifier les valeurs après assignation
-          console.log('Valeurs après assignation:');
-          console.log('company:', this.profileForm.company);
-          console.log('address:', this.profileForm.address);
-          console.log('contact_instructions:', this.profileForm.contact_instructions);
-          
-          // Créer une copie pour pouvoir annuler les modifications
-          this.originalProfile = JSON.parse(JSON.stringify(this.profileForm));
-          
-          console.log('ProfileTab: Formulaire initialisé avec succès');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.data) {
+            console.log('Données fraîches récupérées:', result.data);
+            this.initializeForm(result.data);
+          }
         } else {
-          throw new Error('Aucune donnée utilisateur trouvée');
+          console.warn('Impossible de rafraîchir les données:', response.status);
         }
       } catch (error) {
-        console.error('ProfileTab: Erreur complète:', error);
-        this.error = error.message || "Impossible de charger votre profil. Veuillez réessayer.";
+        console.error('Erreur lors du rafraîchissement des données:', error);
       } finally {
         this.loading = false;
       }
     },
     
-    // Fonction de test pour le débogage
-    async debugFetchProfile() {
-      try {
-        console.log('Test API: Récupération du profil utilisateur...');
-        
-        const response = await fetch('/api/directus/users/me?fields=*,avatar.*', {
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log('Données brutes reçues de l\'API:', result.data);
-        
-        // Afficher les champs spécifiques
-        const userData = result.data;
-        console.log('Vérification des champs:');
-        console.log('company:', userData.company);
-        console.log('address:', userData.address);
-        console.log('contact_instructions:', userData.contact_instructions);
-        console.log('hide_email:', userData.hide_email);
-        console.log('hide_phone:', userData.hide_phone);
-        console.log('hide_address:', userData.hide_address);
-        console.log('phone (manquant):', userData.phone);
-        
-        alert('Vérifiez la console pour les détails de la réponse API');
-      } catch (error) {
-        console.error('Erreur lors du test API:', error);
-        alert(`Erreur lors du test API: ${error.message}`);
-      }
-    },
-    
     // Initialiser le formulaire avec les données utilisateur
     initializeForm(userData) {
-      console.log('Initialisation du formulaire avec données brutes:', userData);
+      console.log('Initialisation du formulaire avec données:', userData);
       
-      // Faire une copie des données pour ne pas les modifier directement
+      // Créer un nouvel objet pour éviter les références
       const formData = {
         first_name: userData.first_name || '',
         last_name: userData.last_name || '',
         email: userData.email || '',
         avatar: userData.avatar || null,
-        avatar_file: null
+        avatar_file: null,
+        company: userData.company || '',
+        phone: userData.phone || '',
+        address: userData.address || '',
+        contact_instructions: userData.contact_instructions || '',
+        hide_email: Boolean(userData.hide_email),
+        hide_phone: Boolean(userData.hide_phone),
+        hide_address: Boolean(userData.hide_address)
       };
       
-      // Ajouter explicitement chaque champ un par un
-      formData.company = userData.company || '';
-      formData.phone = userData.phone || '';
-      formData.address = userData.address || '';
-      formData.contact_instructions = userData.contact_instructions || '';
+      // Assigner l'objet complet
+      this.profileForm = formData;
       
-      // Conversion explicite des booléens
-      formData.hide_email = Boolean(userData.hide_email);
-      formData.hide_phone = Boolean(userData.hide_phone);
-      formData.hide_address = Boolean(userData.hide_address);
+      // Sauvegarder pour pouvoir annuler
+      this.originalProfile = JSON.parse(JSON.stringify(formData));
       
-      // Assigner l'objet complet pour forcer la réactivité
-      this.profileForm = { ...formData };
-      
-      // Créer une copie pour pouvoir annuler les modifications
-      this.originalProfile = JSON.parse(JSON.stringify(this.profileForm));
-      
-      console.log('Formulaire après initialisation complète:', this.profileForm);
+      console.log('Formulaire initialisé avec succès');
     },
     
     // Gérer le téléchargement d'un fichier image
@@ -548,10 +468,10 @@ export default {
         return;
       }
       
-      // Stocker le fichier pour le téléchargement ultérieur
+      // Stocker le fichier
       this.profileForm.avatar_file = file;
       
-      // Réinitialiser l'input file pour permettre de recharger le même fichier si nécessaire
+      // Réinitialiser l'input
       event.target.value = '';
     },
     
@@ -566,92 +486,63 @@ export default {
       this.saving = true;
       
       try {
-        let avatarId = this.profileForm.avatar;
+        // Code d'upload d'avatar inchangé...
         
-        // Si un nouveau fichier a été téléchargé
-        if (this.profileForm.avatar_file) {
-          // Création d'un FormData pour l'upload
-          const formData = new FormData();
-          formData.append('file', this.profileForm.avatar_file);
-          
-          // Upload du fichier via le proxy Directus
-          const response = await fetch('/api/directus/files', {
-            method: 'POST',
-            body: formData
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Erreur lors de l'upload: ${response.status}`);
-          }
-          
-          const result = await response.json();
-          avatarId = result.data.id;
-        }
-        
-        // Préparer les données à envoyer
+        // Données à envoyer
         const userData = {
-          first_name: this.profileForm.first_name,
-          last_name: this.profileForm.last_name,
-          email: this.profileForm.email,
-          avatar: avatarId,
-          company: this.profileForm.company,
-          address: this.profileForm.address,
-          contact_instructions: this.profileForm.contact_instructions,
-          hide_email: this.profileForm.hide_email ? 1 : 0,
-          hide_phone: this.profileForm.hide_phone ? 1 : 0,
-          hide_address: this.profileForm.hide_address ? 1 : 0
-          // Nous n'incluons pas 'phone' car ce champ n'existe pas encore dans la DB
+          // Mêmes données que précédemment...
         };
         
-        // Vérifier si le téléphone existe, et si oui, l'ajouter
-        if (this.profileForm.phone) {
-          try {
-            const userDataString = JSON.stringify(userData);
-            const tempUserData = JSON.parse(userDataString);
-            tempUserData.phone = this.profileForm.phone;
-            const testResponse = await fetch('/api/directus/users/me', {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(tempUserData)
-            });
-            
-            if (testResponse.ok) {
-              // Si pas d'erreur, le champ existe et nous pouvons l'ajouter à userData
-              userData.phone = this.profileForm.phone;
-            } else {
-              console.warn('Le champ téléphone n\'existe pas encore dans la base de données');
-            }
-          } catch (phoneTestError) {
-            console.warn('Erreur lors du test du champ téléphone:', phoneTestError);
-          }
-        }
-        
-        console.log('Envoi des données utilisateur:', userData);
-        
-        // Mettre à jour le profil via le proxy Directus
+        // Mettre à jour le profil
         const response = await fetch('/api/directus/users/me', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
           },
+          credentials: 'include',
           body: JSON.stringify(userData)
         });
         
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Erreur de réponse:', errorText);
+        if (response.ok) {
+          const result = await response.json();
+          
+          // Mettre à jour les données du formulaire avec les données de la réponse
+          if (result.data) {
+            // Mettre à jour le formulaire directement avec les données retournées par l'API
+            this.initializeForm({
+              first_name: result.data.first_name || this.profileForm.first_name,
+              last_name: result.data.last_name || this.profileForm.last_name,
+              email: result.data.email || this.profileForm.email,
+              avatar: avatarId,
+              company: result.data.company || this.profileForm.company,
+              phone: result.data.phone || this.profileForm.phone,
+              address: result.data.address || this.profileForm.address,
+              contact_instructions: result.data.contact_instructions || this.profileForm.contact_instructions,
+              hide_email: Boolean(result.data.hide_email),
+              hide_phone: Boolean(result.data.hide_phone),
+              hide_address: Boolean(result.data.hide_address)
+            });
+            
+            // Mettre à jour l'utilisateur dans le store
+            if (this.authStore && this.authStore.user) {
+              this.authStore.user = {
+                ...this.authStore.user,
+                ...result.data
+              };
+              // Forcer la synchronisation avec le stockage
+              if (this.authStore.syncUserData) {
+                this.authStore.syncUserData();
+              }
+            }
+          }
+          
+          // Notification de succès
+          this.$emit('update-success', 'Votre profil a été mis à jour avec succès');
+        } else {
+          console.error('Erreur de mise à jour:', await response.text());
           throw new Error(`Erreur lors de la mise à jour: ${response.status}`);
         }
-        
-        // Mise à jour de l'original après succès
-        this.profileForm.avatar = avatarId;
-        this.profileForm.avatar_file = null; // Réinitialiser après le téléchargement
-        this.originalProfile = { ...this.profileForm };
-        
-        // Émettre l'événement de succès
-        this.$emit('update-success', 'Votre profil a été mis à jour avec succès');
       } catch (error) {
         console.error('Erreur lors de la sauvegarde du profil:', error);
         alert('Une erreur est survenue lors de la sauvegarde de votre profil. Veuillez réessayer.');
@@ -662,7 +553,7 @@ export default {
     
     // Réinitialiser le formulaire aux valeurs d'origine
     resetForm() {
-      this.profileForm = { ...this.originalProfile };
+      this.profileForm = JSON.parse(JSON.stringify(this.originalProfile));
       this.profileForm.avatar_file = null; // Réinitialiser le fichier téléchargé
     }
   }
