@@ -2,14 +2,20 @@
   <div class="p-6">
     <h2 class="text-2xl font-bold text-gray-900 mb-6">Préférences de notifications</h2>
     
-    <!-- Message de chargement -->
-    <div v-if="loading" class="text-center py-10">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
-      <p class="text-gray-600">Chargement de vos préférences...</p>
+    <!-- Débogage pour le développement -->
+    <div class="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200">
+      <h3 class="font-bold text-blue-800">Débogage NotificationsTab</h3>
+      <p>Loading: {{ loading || directusSDK?.loading }}</p>
+      <p>Error: {{ error || directusSDK?.error }}</p>
+      <p>User ID: {{ effectiveUserId }}</p>
+      <p>Préférences simulées: {{ preferencesLoaded ? 'Oui' : 'Non' }}</p>
+      <button @click="fetchNotificationPreferences" class="bg-blue-500 text-white p-2 rounded mt-2">
+        Recharger les préférences
+      </button>
     </div>
     
-    <!-- Message d'erreur -->
-    <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+    <!-- Message d'erreur - Modifié pour ne s'afficher que s'il y a une vraie erreur -->
+    <div v-if="error && error !== null" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
       <p class="font-medium">Une erreur est survenue</p>
       <p class="text-sm">{{ error }}</p>
       <button 
@@ -21,7 +27,7 @@
     </div>
     
     <!-- Formulaire de préférences -->
-    <form v-else @submit.prevent="savePreferences" class="space-y-8 bg-slate-200 p-6 rounded-lg border border-gray-200 shadow-sm">
+    <form v-if="preferencesLoaded" @submit.prevent="savePreferences" class="space-y-8 bg-slate-200 p-6 rounded-lg border border-gray-200 shadow-sm">
       
       <!-- Notifications par email -->
       <div class="space-y-4">
@@ -145,21 +151,7 @@
         </div>
       </div>
       
-      <!-- Alertes SMS - temporairement désactivé -->
-      <!-- <div class="space-y-4 opacity-60">
-        <div class="flex justify-between items-center border-b border-gray-200 pb-2">
-          <h3 class="text-lg font-medium text-gray-900">Alertes SMS</h3>
-          <span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-medium">Bientôt disponible</span>
-        </div>
-        
-        <div class="space-y-2">
-          <p class="text-sm text-gray-500 italic">
-            Cette fonctionnalité est temporairement suspendue. Nous travaillons à l'améliorer et la rendre disponible prochainement.
-          </p>
-        </div>
-      </div> -->
-      
-      <!-- Newsletter -->
+      <!-- Newsletter simplifiée -->
       <div class="space-y-4">
         <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Newsletter</h3>
         
@@ -176,40 +168,6 @@
             <div class="ml-3 text-sm">
               <label for="newsletter" class="font-medium text-gray-700">S'abonner à la newsletter</label>
               <p class="text-gray-500">Recevez nos actualités, conseils et offres spéciales.</p>
-            </div>
-          </div>
-          
-          <div v-if="preferences.newsletter" class="ml-7 space-y-3">
-            <div>
-              <label for="newsletter-frequency" class="block text-sm font-medium text-gray-700 mb-1">Fréquence</label>
-              <select 
-                id="newsletter-frequency" 
-                v-model="preferences.newsletter_frequence" 
-                class="block w-full h-10 px-3 rounded-md border-slate-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
-              >
-                <option value="">Choisir une fréquence</option>
-                <option value="mensuel">Mensuelle</option>
-                <option value="trimestriel">Trimestriel</option>
-                <option value="semestriel">Semestriel</option>
-              </select>
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Centres d'intérêt</label>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <div v-for="(interest, index) in availableInterests" :key="index" class="flex items-center">
-                  <input 
-                    :id="`interest-${index}`" 
-                    v-model="selectedInterests" 
-                    :value="interest.value" 
-                    type="checkbox" 
-                    class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                  />
-                  <label :for="`interest-${index}`" class="ml-2 text-sm text-gray-700">
-                    {{ interest.label }}
-                  </label>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -241,6 +199,8 @@
 </template>
 
 <script>
+import { useDirectusSDK } from '@/composables/useDirectusSDK';
+
 export default {
   name: 'NotificationsTab',
   
@@ -248,10 +208,27 @@ export default {
     userId: {
       type: String,
       default: ''
+    },
+    user: {
+      type: Object,
+      default: null
+    },
+    isActive: {
+      type: Boolean,
+      default: false
     }
   },
   
   emits: ['update-success'],
+  
+  setup() {
+    // Initialiser le service SDK Directus
+    const directusSDK = useDirectusSDK();
+    
+    return {
+      directusSDK
+    };
+  },
   
   data() {
     return {
@@ -260,8 +237,10 @@ export default {
       saving: false,
       error: null,
       preferenceId: null, // ID des préférences dans Directus
+      preferencesLoaded: false,
+      apiEnabled: true, // Activer les appels API réels
       
-      // Préférences de notifications
+      // Préférences de notifications simplifiées
       preferences: {
         // Notifications par email
         email_nouvelles_annonces: true,
@@ -274,90 +253,91 @@ export default {
         app_nouveaux_messages: true,
         app_alertes_prix: true,
         
-        // Alertes SMS (temporairement désactivé)
-        sms_active: false,
-        sms_messages_urgents: false,
-        sms_visites_confirmees: false,
-        sms_offres: false,
-        telephone_verifie: false,
-        telephone: '',
-        
-        // Newsletter
-        newsletter: false,
-        newsletter_frequence: '',
-        newsletter_interets: []
+        // Newsletter simplifiée
+        newsletter: false
       },
       
       // Sauvegarde des préférences originales
-      originalPreferences: null,
-      
-      // Centres d'intérêt disponibles pour la newsletter
-      availableInterests: [
-        { value: 'actualites', label: 'Actualités immobilières' },
-        { value: 'conseils', label: 'Conseils et astuces' },
-        { value: 'tendances', label: 'Tendances du marché' },
-        { value: 'investissement', label: 'Investissement' },
-        { value: 'financement', label: 'Financement et crédit' },
-        { value: 'promotions', label: 'Offres spéciales' }
-      ],
-      
-      // Centres d'intérêt sélectionnés
-      selectedInterests: []
+      originalPreferences: null
     };
   },
   
   computed: {
-    // Déplacer effectiveUserId de methods à computed
+    // Obtenir l'ID utilisateur à utiliser
     effectiveUserId() {
-      return this.currentUserId || this.userId || '';
+      return this.userId || (this.user && this.user.id) || this.currentUserId || '';
     }
+  },
+  
+  mounted() {
+    // Si l'onglet est actif au montage, charger les préférences
+    if (this.isActive) {
+      this.fetchNotificationPreferences();
+    }
+    
+    // Écouter l'événement de rechargement des données
+    window.addEventListener('refresh-notification-preferences', this.fetchNotificationPreferences);
+  },
+  
+  beforeUnmount() {
+    // Nettoyer les écouteurs d'événements
+    window.removeEventListener('refresh-notification-preferences', this.fetchNotificationPreferences);
   },
   
   watch: {
-    // Synchroniser les intérêts sélectionnés avec preferences.newsletter_interets
-    selectedInterests: {
-      handler(newValue) {
-        this.preferences.newsletter_interets = newValue;
-      },
-      deep: true
-    }
-  },
-  
-  async mounted() {
-    // Si l'ID utilisateur n'est pas fourni, le récupérer depuis l'API
-    if (!this.userId) {
-      await this.fetchCurrentUserId();
-    }
+    // Observer si l'onglet est actif
+    isActive(newValue) {
+      if (newValue && !this.preferencesLoaded) {
+        this.fetchNotificationPreferences();
+      }
+    },
     
-    this.fetchNotificationPreferences();
+    // Réagir aux changements d'ID utilisateur
+    userId: {
+      handler(newValue) {
+        if (newValue && newValue !== this.currentUserId) {
+          this.currentUserId = newValue;
+          this.fetchNotificationPreferences();
+        }
+      },
+      immediate: true
+    },
+    
+    // Observer les changements de user
+    user: {
+      handler(newUser) {
+        if (newUser && newUser.id && newUser.id !== this.currentUserId) {
+          this.currentUserId = newUser.id;
+          this.fetchNotificationPreferences();
+        }
+      },
+      immediate: true
+    }
   },
   
   methods: {
-    // Nouvelle méthode pour récupérer l'ID utilisateur
-    async fetchCurrentUserId() {
-      try {
-        const response = await fetch('/api/directus/users/me?fields=id', {
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        if (result.data && result.data.id) {
-          this.currentUserId = result.data.id;
-          console.log('ID utilisateur récupéré:', this.currentUserId);
-        } else {
-          throw new Error('ID utilisateur non trouvé dans la réponse');
-        }
-      } catch (error) {
-        console.error('Erreur lors de la récupération de l\'ID utilisateur:', error);
-      }
+    // Simuler le chargement des préférences (en attendant la résolution des problèmes d'API)
+    simulatePreferences() {
+      this.loading = true;
+      this.error = null;
+      
+      // Simuler un délai de chargement
+      setTimeout(() => {
+        // Initialiser avec les préférences par défaut
+        this.initializePreferences(this.preferences);
+        this.preferencesLoaded = true;
+        this.loading = false;
+      }, 500);
     },
     
     // Récupérer les préférences de notifications
     async fetchNotificationPreferences() {
+      if (!this.apiEnabled) {
+        // Si l'API est désactivée, utiliser la simulation
+        this.simulatePreferences();
+        return;
+      }
+      
       this.loading = true;
       this.error = null;
       
@@ -365,33 +345,38 @@ export default {
         console.log("Récupération des préférences pour l'utilisateur:", this.effectiveUserId);
         
         if (!this.effectiveUserId) {
-          throw new Error('ID utilisateur non disponible');
+          // Si pas d'ID utilisateur, tenter de le récupérer via le SDK
+          console.log("Pas d'ID utilisateur, tentative de récupération via getUserProfile");
+          const userData = await this.directusSDK.getUserProfile(['id']);
+          if (userData && userData.id) {
+            this.currentUserId = userData.id;
+            console.log("ID utilisateur récupéré:", this.currentUserId);
+          } else {
+            throw new Error('Impossible de récupérer l\'ID utilisateur');
+          }
         }
         
-        // Appel API réel vers Directus via notre proxy
-        const response = await fetch(`/api/directus/items/user_preferences?filter[user_id][_eq]=${this.effectiveUserId}&fields=*`, {
-          credentials: 'include'
-        });
+        // Utiliser le SDK pour récupérer les préférences
+        const preferencesArray = await this.directusSDK.getNotificationPreferences();
+        console.log("Préférences reçues:", preferencesArray);
         
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log('Préférences reçues:', result);
-        
-        if (result.data && result.data.length > 0) {
+        if (preferencesArray && preferencesArray.length > 0) {
           // Utiliser les données de Directus
-          this.preferenceId = result.data[0].id;
-          this.initializePreferences(result.data[0]);
+          const preferences = preferencesArray[0];
+          this.preferenceId = preferences.id;
+          this.initializePreferences(preferences);
         } else {
-          // Aucune préférence trouvée, créer des valeurs par défaut
+          // Aucune préférence trouvée, utiliser les valeurs par défaut
           console.log('Aucune préférence trouvée, utilisation des valeurs par défaut');
           this.initializePreferences(this.preferences);
           
-          // Créer les préférences dans Directus pour ce nouvel utilisateur
-          this.createDefaultPreferences();
+          // Si l'utilisateur est connecté, créer les préférences par défaut
+          if (this.effectiveUserId) {
+            this.savePreferences();
+          }
         }
+        
+        this.preferencesLoaded = true;
       } catch (error) {
         console.error('Erreur lors du chargement des préférences:', error);
         this.error = "Impossible de charger vos préférences. Veuillez réessayer.";
@@ -407,93 +392,25 @@ export default {
     initializePreferences(data) {
       // Fusionner les données avec les valeurs par défaut
       this.preferences = {
-        ...this.preferences,
+        // Valeurs par défaut
+        email_nouvelles_annonces: true,
+        email_messages: true,
+        email_annonces_expirees: true,
+        email_mises_a_jour: false,
+        app_notifications_push: true,
+        app_nouveaux_messages: true,
+        app_alertes_prix: true,
+        newsletter: false,
+        
+        // Écraser avec les données reçues
         ...data
       };
       
       // S'assurer que email_annonces_expirees est toujours true (obligatoire)
       this.preferences.email_annonces_expirees = true;
       
-      // Temporairement désactiver les SMS
-      this.preferences.sms_active = false;
-      
-      // Initialiser les intérêts sélectionnés
-      this.selectedInterests = Array.isArray(data.newsletter_interets) 
-        ? [...data.newsletter_interets] 
-        : [];
-      
       // Créer une copie pour pouvoir annuler les modifications
       this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
-    },
-    
-    // Créer les préférences par défaut dans Directus
-    async createDefaultPreferences() {
-      try {
-        // Générer un UUID pour l'ID
-        const newId = crypto.randomUUID ? crypto.randomUUID() : 
-          ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-          );
-        
-        console.log('Création des préférences par défaut pour userId:', this.effectiveUserId);
-        
-        if (!this.effectiveUserId) {
-          throw new Error('ID utilisateur non disponible');
-        }
-        
-        // Préparer les données par défaut
-        const defaultPreferences = {
-          id: newId, // Ajout explicite de l'ID
-          user_id: this.effectiveUserId,
-          email_nouvelles_annonces: this.preferences.email_nouvelles_annonces,
-          email_messages: this.preferences.email_messages,
-          email_annonces_expirees: true, // Toujours true
-          email_mises_a_jour: this.preferences.email_mises_a_jour,
-          app_notifications_push: this.preferences.app_notifications_push,
-          app_nouveaux_messages: this.preferences.app_nouveaux_messages,
-          app_alertes_prix: this.preferences.app_alertes_prix,
-          newsletter: this.preferences.newsletter,
-          newsletter_frequence: this.preferences.newsletter_frequence,
-          newsletter_interets: this.preferences.newsletter_interets
-        };
-        
-        console.log('Création des préférences par défaut:', defaultPreferences);
-        
-        // Créer les préférences dans Directus
-        const response = await fetch('/api/directus/items/user_preferences', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(defaultPreferences)
-        });
-        
-        const responseText = await response.text();
-        console.log('Réponse brute de création:', responseText);
-        
-        if (!response.ok) {
-          console.warn(`Échec de la création des préférences par défaut: ${response.status} - ${responseText}`);
-          return;
-        }
-        
-        try {
-          if (responseText) {
-            const result = JSON.parse(responseText);
-            console.log('Préférences par défaut créées:', result);
-            
-            // Stocker l'ID des préférences créées
-            if (result.data && result.data.id) {
-              this.preferenceId = result.data.id;
-              console.log('ID des préférences stocké:', this.preferenceId);
-            }
-          }
-        } catch (parseError) {
-          console.warn('Erreur de parsing JSON:', parseError);
-        }
-      } catch (error) {
-        console.error('Erreur lors de la création des préférences par défaut:', error);
-      }
     },
     
     // Enregistrer les préférences
@@ -501,13 +418,28 @@ export default {
       this.saving = true;
       
       try {
+        if (!this.apiEnabled) {
+          // Simuler l'enregistrement
+          setTimeout(() => {
+            // Mise à jour de l'original après succès
+            this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
+            
+            // Émettre l'événement de succès
+            this.$emit('update-success', 'Vos préférences de notifications ont été mises à jour avec succès');
+            this.saving = false;
+          }, 800);
+          return;
+        }
+        
+        // Si l'API est activée, procéder à l'enregistrement réel
         if (!this.effectiveUserId) {
           throw new Error('ID utilisateur non disponible');
         }
         
-        // Préparer les données à envoyer
+        // Préparer les données à envoyer (simplifiées)
         const dataToSend = {
-          user_id: this.effectiveUserId,
+          utilisateur: this.effectiveUserId,
+          status: 'active',
           email_nouvelles_annonces: this.preferences.email_nouvelles_annonces,
           email_messages: this.preferences.email_messages,
           email_annonces_expirees: true, // Toujours true
@@ -515,87 +447,28 @@ export default {
           app_notifications_push: this.preferences.app_notifications_push,
           app_nouveaux_messages: this.preferences.app_notifications_push ? this.preferences.app_nouveaux_messages : false,
           app_alertes_prix: this.preferences.app_notifications_push ? this.preferences.app_alertes_prix : false,
-          newsletter: this.preferences.newsletter,
-          newsletter_frequence: this.preferences.newsletter ? this.preferences.newsletter_frequence : '',
-          newsletter_interets: this.preferences.newsletter ? this.selectedInterests : []
+          newsletter: this.preferences.newsletter
         };
         
         console.log('Données à envoyer:', dataToSend);
         
-        let response;
-        let responseText;
+        let result;
         
         if (this.preferenceId) {
           // Mettre à jour les préférences existantes
           console.log(`Mise à jour des préférences (ID: ${this.preferenceId})`);
-          
-          try {
-            response = await fetch(`/api/directus/items/user_preferences/${this.preferenceId}`, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify(dataToSend)
-            });
-            
-            responseText = await response.text();
-            console.log('Réponse brute de mise à jour:', responseText);
-            
-            if (!response.ok) {
-              throw new Error(`Erreur lors de la mise à jour: ${response.status} - ${responseText}`);
-            }
-          } catch (patchError) {
-            console.error('Erreur de PATCH détaillée:', patchError);
-            throw patchError;
-          }
+          result = await this.directusSDK.updateItem('preferences_notifications', this.preferenceId, dataToSend);
         } else {
-          // Générer un UUID pour le nouvel enregistrement
-          const newId = crypto.randomUUID ? crypto.randomUUID() : 
-            ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-              (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-            );
-          
-          // Ajouter l'ID à l'objet
-          dataToSend.id = newId;
-          
           // Créer de nouvelles préférences
-          console.log('Création de nouvelles préférences avec ID:', newId);
+          console.log('Création de nouvelles préférences');
+          result = await this.directusSDK.createItem('preferences_notifications', dataToSend);
           
-          try {
-            response = await fetch('/api/directus/items/user_preferences', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify(dataToSend)
-            });
-            
-            responseText = await response.text();
-            console.log('Réponse brute de création:', responseText);
-            
-            if (!response.ok) {
-              throw new Error(`Erreur lors de la création: ${response.status} - ${responseText}`);
-            }
-            
-            // Tenter de parser le JSON si la réponse est OK
-            if (responseText) {
-              try {
-                const result = JSON.parse(responseText);
-                if (result.data && result.data.id) {
-                  this.preferenceId = result.data.id;
-                  console.log('Nouveau préférenceId récupéré:', this.preferenceId);
-                }
-              } catch (parseError) {
-                console.warn('Impossible de parser la réponse JSON:', parseError);
-              }
-            }
-          } catch (postError) {
-            console.error('Erreur de POST détaillée:', postError);
-            throw postError;
+          if (result && result.id) {
+            this.preferenceId = result.id;
           }
         }
+        
+        console.log('Résultat de l\'opération:', result);
         
         // Mise à jour de l'original après succès
         this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
@@ -604,7 +477,7 @@ export default {
         this.$emit('update-success', 'Vos préférences de notifications ont été mises à jour avec succès');
       } catch (error) {
         console.error('Erreur lors de la sauvegarde des préférences:', error);
-        alert(`Une erreur est survenue lors de la sauvegarde de vos préférences: ${error.message}`);
+        alert('Une erreur est survenue lors de la sauvegarde de vos préférences. Veuillez réessayer.');
       } finally {
         this.saving = false;
       }
@@ -613,11 +486,6 @@ export default {
     // Réinitialiser le formulaire aux valeurs d'origine
     resetForm() {
       this.preferences = JSON.parse(JSON.stringify(this.originalPreferences));
-      
-      // Réinitialiser également les intérêts sélectionnés
-      this.selectedInterests = Array.isArray(this.originalPreferences.newsletter_interets) 
-        ? [...this.originalPreferences.newsletter_interets] 
-        : [];
     }
   }
 };

@@ -187,9 +187,22 @@ export const useDirectusSDK = () => {
    * @returns {Promise} - Préférences de notifications
    */
   const getNotificationPreferences = async () => {
-    return getItems('preferences_notifications', {
-      filter: { user: { _eq: '$CURRENT_USER' } }
-    });
+    try {
+      // Récupérer d'abord le profil utilisateur pour obtenir l'ID
+      const user = await getUserProfile(['id']);
+      
+      if (!user || !user.id) {
+        throw new Error('Impossible de récupérer l\'ID utilisateur');
+      }
+      
+      // Utiliser client_id au lieu de utilisateur
+      return getItems('preferences_notifications', {
+        filter: { client_id: { _eq: user.id } }
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des préférences de notifications:', error);
+      return [];
+    }
   };
   
   /**
@@ -197,12 +210,45 @@ export const useDirectusSDK = () => {
    * @returns {Promise} - Favoris de l'utilisateur
    */
   const getUserFavorites = async () => {
-    return getItems('favoris', {
-      filter: {
-        user: { _eq: '$CURRENT_USER' }
-      },
-      fields: ['*', 'annonce.*']
-    });
+    try {
+      // Récupérer d'abord le profil utilisateur pour obtenir l'ID
+      const user = await getUserProfile(['id']);
+      
+      if (!user || !user.id) {
+        throw new Error('Impossible de récupérer l\'ID utilisateur');
+      }
+      
+      // Utiliser client_id au lieu de utilisateur
+      return getItems('favoris', {
+        filter: {
+          client_id: { _eq: user.id }
+        },
+        fields: 'id,status,date_created,client_id,annonce.id,annonce.Titre,annonce.prix_vente,annonce.localisation,annonce.surface_habitable,annonce.pieces,annonce.chambres,annonce.image_principale'
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des favoris:', error);
+      
+      // Essayer avec fetch directement en cas d'erreur avec getItems
+      try {
+        const userId = error.userId || (await getUserProfile(['id']))?.id;
+        if (!userId) {
+          throw new Error('ID utilisateur non disponible');
+        }
+        
+        // Utiliser client_id au lieu de utilisateur
+        const response = await fetch(`/api/directus/items/favoris?filter[client_id][_eq]=${userId}&fields=id,status,date_created,client_id,annonce.id,annonce.Titre,annonce.prix_vente,annonce.localisation,annonce.surface_habitable,annonce.pieces,annonce.chambres,annonce.image_principale`);
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        return result.data || [];
+      } catch (fetchError) {
+        console.error('Erreur lors de la récupération directe des favoris:', fetchError);
+        return [];
+      }
+    }
   };
   
   /**
@@ -219,13 +265,26 @@ export const useDirectusSDK = () => {
    * @returns {Promise} - Commandes de l'utilisateur
    */
   const getUserOrders = async () => {
-    return getItems('commandes', {
-      filter: {
-        user: { _eq: '$CURRENT_USER' }
-      },
-      fields: ['*', 'produit.*'],
-      sort: ['-date_creation']
-    });
+    try {
+      // Récupérer d'abord le profil utilisateur pour obtenir l'ID
+      const user = await getUserProfile(['id']);
+      
+      if (!user || !user.id) {
+        throw new Error('Impossible de récupérer l\'ID utilisateur');
+      }
+      
+      // Utiliser client_id au lieu de client
+      return getItems('commandes', {
+        filter: {
+          client_id: { _eq: user.id }
+        },
+        fields: '*,produit.*',
+        sort: '-date_created'
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des commandes:', error);
+      return [];
+    }
   };
   
   /**
@@ -233,14 +292,304 @@ export const useDirectusSDK = () => {
    * @returns {Promise} - Annonces de l'utilisateur
    */
   const getUserListings = async () => {
-    return getItems('annonces', {
-      filter: {
-        user: { _eq: '$CURRENT_USER' }
-      },
-      fields: ['*', 'commande.*'],
-      sort: ['-date_creation']
-    });
+    try {
+      // Récupérer d'abord le profil utilisateur pour obtenir l'ID
+      const user = await getUserProfile(['id']);
+      
+      if (!user || !user.id) {
+        throw new Error('Impossible de récupérer l\'ID utilisateur');
+      }
+      
+      // Utiliser client_id au lieu de user_created
+      return getItems('annonces', {
+        filter: {
+          client_id: { _eq: user.id }
+        },
+        fields: '*,commande_id.*',
+        sort: '-date_created'
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des annonces:', error);
+      return [];
+    }
   };
+
+  /**
+   * Récupérer les conversations de l'utilisateur
+   * @returns {Promise} - Conversations de l'utilisateur
+   */
+  const getUserConversations = async () => {
+    try {
+      // Récupérer d'abord le profil utilisateur pour obtenir l'ID
+      const user = await getUserProfile(['id']);
+      
+      if (!user || !user.id) {
+        throw new Error('Impossible de récupérer l\'ID utilisateur');
+      }
+      
+      // Utiliser client_id au lieu de user_proprietaire
+      return getItems('conversations', {
+        filter: { 
+          client_id: { _eq: user.id } 
+        },
+        fields: '*,annonce.*',
+        sort: '-date_updated'
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des conversations:', error);
+      return [];
+    }
+  };
+  
+  /**
+   * Récupérer les recherches sauvegardées de l'utilisateur
+   * @returns {Promise} - Recherches sauvegardées
+   */
+  const getUserSavedSearches = async () => {
+    try {
+      // Récupérer d'abord le profil utilisateur pour obtenir l'ID
+      const user = await getUserProfile(['id']);
+      
+      if (!user || !user.id) {
+        throw new Error('Impossible de récupérer l\'ID utilisateur');
+      }
+      
+      // Utiliser client_id au lieu de utilisateur
+      return getItems('recherches_sauvegardees', {
+        filter: {
+          client_id: { _eq: user.id }
+        },
+        fields: '*'
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des recherches sauvegardées:', error);
+      return [];
+    }
+  };
+  
+  /**
+   * Récupérer les mises en avant de l'utilisateur
+   * @returns {Promise} - Mises en avant
+   */
+  const getUserHighlights = async () => {
+    try {
+      // Récupérer d'abord le profil utilisateur pour obtenir l'ID
+      const user = await getUserProfile(['id']);
+      
+      if (!user || !user.id) {
+        throw new Error('Impossible de récupérer l\'ID utilisateur');
+      }
+      
+      // Utiliser client_id au lieu de client
+      return getItems('mise_en_avant', {
+        filter: {
+          client_id: { _eq: user.id }
+        },
+        fields: '*,annonce.*'
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des mises en avant:', error);
+      return [];
+    }
+  };
+
+/**
+ * Récupérer les forfaits utilisateur avec leurs annonces associées
+ * @param {string} userId - ID de l'utilisateur
+ * @returns {Promise} - Forfaits utilisateur avec annonces
+ */
+const getUserForfaitsWithListings = async (userId) => {
+  try {
+    if (!userId) {
+      // Si userId n'est pas fourni, récupérer l'ID de l'utilisateur courant
+      const user = await getUserProfile(['id']);
+      userId = user?.id;
+      
+      if (!userId) {
+        throw new Error('Impossible de récupérer l\'ID utilisateur');
+      }
+    }
+    
+    // 1. Récupérer les commandes de l'utilisateur (qui sont des forfaits d'annonces)
+    const commandes = await getItems('commandes', {
+      filter: {
+        client_id: { _eq: userId },
+        // Utiliser la valeur correcte 'annonces' pour le type de produit
+        type_produit: { _eq: 'annonces' }
+      },
+      fields: '*,produit.*',
+      sort: '-date_created'
+    });
+    
+    if (!commandes || commandes.length === 0) {
+      // Si aucune commande n'est trouvée avec ce filtre, essayer sans le filtre type_produit
+      // car il se peut que les enregistrements existants n'aient pas ce champ rempli
+      console.log('Aucune commande trouvée avec le filtre type_produit. Essai sans ce filtre...');
+      
+      const toutesCommandes = await getItems('commandes', {
+        filter: {
+          client_id: { _eq: userId }
+        },
+        fields: '*,produit.*',
+        sort: '-date_created'
+      });
+      
+      if (!toutesCommandes || toutesCommandes.length === 0) {
+        return [];
+      }
+      
+      // Filtrer manuellement les commandes qui semblent être des forfaits d'annonces
+      // en se basant sur les autres propriétés
+      const commandesFiltrees = toutesCommandes.filter(commande => 
+        commande.produit && 
+        (commande.produit.type_produit === 'annonces' || 
+         commande.annonces_restantes !== null ||
+         (commande.produit.nom && commande.produit.nom.toLowerCase().includes('annonce')))
+      );
+      
+      if (commandesFiltrees.length === 0) {
+        return [];
+      }
+      
+      // Continuer avec les commandes filtrées
+      return await traiterCommandes(commandesFiltrees);
+    }
+    
+    // Continuer avec les commandes trouvées avec le filtre exact
+    return await traiterCommandes(commandes);
+    
+  } catch (error) {
+    console.error('Erreur dans getUserForfaitsWithListings:', error);
+    
+    // Implémentation de secours avec un timeout pour éviter les blocages
+    const timeout = setTimeout(() => {
+      console.warn('Timeout atteint lors de la récupération des forfaits');
+      return [];
+    }, 5000);
+    
+    try {
+      // Essayer une approche alternative plus directe
+      if (!userId) {
+        const user = await getUserProfile(['id']);
+        userId = user?.id;
+      }
+      
+      // Récupération directe via fetch
+      const response = await fetch(`/api/directus/items/commandes?filter[client_id][_eq]=${userId}&fields=*,produit.*`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      const commandes = result.data || [];
+      
+      // Filtrer les forfaits d'annonces
+      const forfaits = commandes.filter(commande => 
+        commande.type_produit === 'annonces' || 
+        (commande.produit && commande.produit.type_produit === 'annonces')
+      );
+      
+      if (forfaits.length === 0) {
+        clearTimeout(timeout);
+        return [];
+      }
+      
+      // Pour chaque forfait, récupérer les annonces associées
+      const forfaritsAvecAnnonces = await Promise.all(
+        forfaits.map(async (forfait) => {
+          try {
+            const annonceResponse = await fetch(`/api/directus/items/annonces?filter[commande_id][_eq]=${forfait.id}&fields=*`, {
+              credentials: 'include'
+            });
+            
+            if (!annonceResponse.ok) {
+              return {
+                ...forfait,
+                annonces: []
+              };
+            }
+            
+            const annonceResult = await annonceResponse.json();
+            return {
+              id: forfait.id,
+              client_id: forfait.client_id,
+              date_debut: forfait.date_debut,
+              date_fin: forfait.date_fin,
+              status: forfait.status,
+              forfait_type: forfait.produit?.nom || 'Forfait',
+              description: forfait.produit?.description || '',
+              nombre_annonces_total: forfait.produit?.nombre || 0,
+              nombre_annonces_restantes: forfait.annonces_restantes || 0,
+              duree_jours: forfait.produit?.duree_jours || 0,
+              prix: forfait.montant || forfait.produit?.prix || 0,
+              est_actif: new Date(forfait.date_fin) > new Date() && forfait.status === 'published',
+              reference: forfait.reference,
+              annonces: annonceResult.data || []
+            };
+          } catch (e) {
+            console.error(`Erreur lors de la récupération des annonces pour le forfait ${forfait.id}:`, e);
+            return {
+              ...forfait,
+              annonces: []
+            };
+          }
+        })
+      );
+      
+      clearTimeout(timeout);
+      return forfaritsAvecAnnonces;
+    } catch (altError) {
+      clearTimeout(timeout);
+      console.error('Erreur alternative dans getUserForfaitsWithListings:', altError);
+      return [];
+    }
+  }
+};
+
+// Fonction helper pour traiter les commandes et récupérer leurs annonces
+async function traiterCommandes(commandes) {
+  // Pour chaque commande, récupérer les annonces associées
+  return await Promise.all(
+    commandes.map(async (commande) => {
+      try {
+        // Récupérer les annonces liées à cette commande
+        const annonces = await getItems('annonces', {
+          filter: {
+            commande_id: { _eq: commande.id }
+          },
+          fields: '*'
+        });
+        
+        // Construire un objet qui ressemble à ce qu'aurait retourné user_forfaits
+        return {
+          id: commande.id,
+          client_id: commande.client_id,
+          date_debut: commande.date_debut,
+          date_fin: commande.date_fin,
+          status: commande.status,
+          forfait_type: commande.produit?.nom || 'Forfait',
+          description: commande.produit?.description || '',
+          nombre_annonces_total: commande.produit?.nombre || 0,
+          nombre_annonces_restantes: commande.annonces_restantes || 0,
+          duree_jours: commande.produit?.duree_jours || 0,
+          prix: commande.montant || commande.produit?.prix || 0,
+          est_actif: new Date(commande.date_fin) > new Date() && commande.status === 'published',
+          reference: commande.reference,
+          annonces: annonces || []
+        };
+      } catch (e) {
+        console.error(`Erreur lors de la récupération des annonces pour la commande ${commande.id}:`, e);
+        return {
+          ...commande,
+          annonces: []
+        };
+      }
+    })
+  );
+};
 
   // Exposer les fonctions
   return {
@@ -258,6 +607,10 @@ export const useDirectusSDK = () => {
     getUserFavorites,
     removeFavorite,
     getUserOrders,
-    getUserListings
+    getUserListings,
+    getUserConversations,
+    getUserSavedSearches,
+    getUserHighlights,
+    getUserForfaitsWithListings
   };
 };

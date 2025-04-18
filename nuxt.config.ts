@@ -1,4 +1,4 @@
-// Fichier à placer dans: mmr-frontend/nuxt.config.ts
+// mmr-frontend/nuxt.config.ts
 
 export default defineNuxtConfig({
   devtools: { enabled: true },

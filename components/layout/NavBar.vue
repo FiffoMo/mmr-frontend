@@ -8,7 +8,7 @@
         <!-- Navigation principale - version desktop -->
         <!-- Navigation -->
         <nav class="hidden md:flex space-x-6">
-          <NuxtLink to="/annonces" class="text-gray-700 hover:text-cyan-600">Tous les biens</NuxtLink>
+          <NuxtLink to="/annonces" class="text-gray-700 hover:text-cyan-600"><strong>Tous</strong> </NuxtLink>
           <NuxtLink to="/annonces?category=maisons" class="text-gray-700 hover:text-cyan-600">Maisons</NuxtLink>
           <NuxtLink to="/annonces?category=immeubles" class="text-gray-700 hover:text-cyan-600">Immeubles</NuxtLink>
           
@@ -37,6 +37,10 @@
           
           <span class="text-gray-300">|</span>
           
+          <NuxtLink to="/articles" class="text-gray-700 hover:text-cyan-600">Articles utiles</NuxtLink>
+
+          <span class="text-gray-300">|</span>
+                    
           <!-- Menu déroulant "Services" -->
           <div class="relative">
             <button 
@@ -53,23 +57,20 @@
               class="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md py-1 z-10"
               @mouseleave="isServicesDropdownOpen = false"
             >
+              <NuxtLink to="/tarifs" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Tarifs</NuxtLink>
+              <NuxtLink to="/publicite" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Pub</NuxtLink>
               <NuxtLink to="/about" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">A propos</NuxtLink>
               <NuxtLink to="/faq" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">FAQ</NuxtLink>
-              <NuxtLink to="/testimonials" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Témoignages</NuxtLink>
+              <!-- <NuxtLink to="/testimonials" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Témoignages</NuxtLink> -->
+              <NuxtLink to="/contact" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Contact</NuxtLink>
             </div>
           </div>
-          
-          <NuxtLink to="/articles" class="text-gray-700 hover:text-cyan-600">Articles utiles</NuxtLink>
-          <NuxtLink to="/tarifs" class="text-gray-700 hover:text-cyan-600">Tarifs</NuxtLink>
-          <NuxtLink to="/publicite" class="text-gray-700 hover:text-cyan-600">Pub</NuxtLink>
-          <NuxtLink to="/contact" class="text-gray-700 hover:bg-cyan-50">Contact</NuxtLink>
         </nav>
 
         <!-- Actions utilisateur -->
         <div class="flex items-center space-x-4">
-          <NuxtLink to="/annonces/ajouter" class="bg-cyan-500 text-white px-4 py-2 rounded hover:bg-cyan-600">
-            + Ajouter une annonce
-          </NuxtLink>
+          <!-- Bouton ajouter une annonce réduit de taille -->
+          <AddAnnonceButton :is-header="true" class="text-sm px-2 py-1" />
           
           <!-- Menu utilisateur non authentifié -->
           <template v-if="!isAuthenticated">
@@ -125,13 +126,15 @@
       <!-- Menu mobile -->
       <div v-if="mobileMenuOpen" class="md:hidden py-4">
         <nav class="flex flex-col space-y-4">
-          <NuxtLink to="/annonces/maisons" class="hover:text-blue-600">Maisons</NuxtLink>
-          <NuxtLink to="/annonces/appartements" class="hover:text-blue-600">Appartements</NuxtLink>
-          <NuxtLink to="/annonces/immeubles" class="hover:text-blue-600">Immeubles</NuxtLink>
-          <NuxtLink to="/annonces/constructions" class="hover:text-blue-600">Constructions</NuxtLink>
-          <NuxtLink to="/blog" class="hover:text-blue-600">Articles</NuxtLink>
+          <NuxtLink to="/annonces" class="hover:text-blue-600">Rechercher</NuxtLink>
+          <NuxtLink to="/annonces?category=maisons" class="hover:text-blue-600">Maisons</NuxtLink>
+          <NuxtLink to="/annonces?category=immeubles" class="hover:text-blue-600">Immeubles</NuxtLink>
+          <NuxtLink to="/annonces?category=appartements" class="hover:text-blue-600">Appartements</NuxtLink>
+          <NuxtLink to="/annonces?category=constructions" class="hover:text-blue-600">Constructions</NuxtLink>
+          <NuxtLink to="/articles" class="hover:text-blue-600">Articles utiles</NuxtLink>
           <NuxtLink to="/tarifs" class="hover:text-blue-600">Tarifs</NuxtLink>
           <NuxtLink to="/publicite" class="hover:text-blue-600">Pub</NuxtLink>
+          <NuxtLink to="/contact" class="hover:text-blue-600">Contact</NuxtLink>
           
           <!-- Ajout des liens d'authentification pour mobile -->
           <div class="pt-4 border-t border-gray-200">
@@ -153,8 +156,12 @@
 import { ref, onMounted, computed } from 'vue';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useRouter } from 'vue-router';
+import AddAnnonceButton from '~/components/common/AddAnnonceButton.vue';
 
 export default {
+  components: {
+    AddAnnonceButton
+  },
   setup() {
     const mobileMenuOpen = ref(false);
     

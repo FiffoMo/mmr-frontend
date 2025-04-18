@@ -48,35 +48,10 @@
             
             <div class="text-center">
               <NuxtLink 
-                v-if="orderDetails.productType === 'annonces'"
-                to="/mes-annonces" 
+                :to="getSettingsUrl(orderDetails.productType)" 
                 class="inline-block px-6 py-3 bg-cyan-500 text-white font-medium rounded-md hover:bg-cyan-600"
               >
-                Gérer mes annonces
-              </NuxtLink>
-              
-              <NuxtLink 
-                v-else-if="orderDetails.productType === 'publicite'"
-                to="/settings?tab=ads" 
-                class="inline-block px-6 py-3 bg-cyan-500 text-white font-medium rounded-md hover:bg-cyan-600"
-              >
-                Configurer ma publicité
-              </NuxtLink>
-              
-              <NuxtLink 
-                v-else-if="orderDetails.productType === 'mise_en_avant'"
-                to="/mes-annonces" 
-                class="inline-block px-6 py-3 bg-cyan-500 text-white font-medium rounded-md hover:bg-cyan-600"
-              >
-                Mettre en avant une annonce
-              </NuxtLink>
-              
-              <NuxtLink 
-                v-else
-                to="/settings?tab=orders" 
-                class="inline-block px-6 py-3 bg-cyan-500 text-white font-medium rounded-md hover:bg-cyan-600"
-              >
-                Voir mes commandes
+                Gérer mes produits
               </NuxtLink>
             </div>
           </div>
@@ -114,6 +89,19 @@
   const paymentSuccessful = ref(false);
   const orderDetails = ref({});
   
+  const getSettingsUrl = (productType) => {
+    switch (productType) {
+      case 'annonces':
+        return '/settings?tab=annonces';
+      case 'publicite':
+        return '/settings?tab=publicites';
+      case 'mise_en_avant':
+        return '/settings?tab=annonces'; // Les mises en avant se gèrent dans l'onglet annonces
+      default:
+        return '/settings'; // Page des paramètres par défaut
+    }
+  };
+
   // Format price to currency
   const formatPrice = (price) => {
     if (!price && price !== 0) return 'N/A';
@@ -129,27 +117,15 @@
   // Vérifie le statut du paiement
   const verifyPayment = async (sessionId) => {
     try {
-      // Pour le développement, simulons une réponse réussie
-      // Dans un environnement de production, vous appelleriez votre API
-      /*
+      // Appel à l'API pour vérifier le paiement
       const response = await fetch(`/api/stripe/verify-payment?session_id=${sessionId}`);
       
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors de la vérification du paiement');
       }
-      
+  
       const data = await response.json();
-      */
-      
-      // Simulation de données de succès
-      const data = {
-        status: 'success',
-        productName: "Forfait DIXIT",
-        amount: 9900, // en centimes
-        orderId: "ORD-" + Math.floor(Math.random() * 10000),
-        productType: 'annonces'
-      };
       
       if (data.status === 'success') {
         paymentSuccessful.value = true;

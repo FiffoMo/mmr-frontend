@@ -1,349 +1,147 @@
 <template>
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-gray-900">Annonces favorites</h2>
-      <div class="flex space-x-2 items-center">
-        <button
-          v-if="favorites.length > 0"
-          @click="showSortOptions = !showSortOptions"
-          class="px-3 py-1.5 border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 relative"
-        >
-          <span class="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
-            </svg>
-            Trier
-          </span>
-          
-          <!-- Options de tri -->
-          <div 
-            v-if="showSortOptions" 
-            class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1"
-          >
-            <button 
-              v-for="option in sortOptions" 
-              :key="option.value"
-              @click="setSortOrder(option.value)"
-              class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-              :class="currentSort === option.value ? 'text-cyan-600 font-medium' : 'text-gray-700'"
-            >
-              {{ option.label }}
-            </button>
-          </div>
-        </button>
-        
-        <div class="relative">
-          <input 
-            type="text" 
-            v-model="searchQuery" 
-            placeholder="Rechercher..." 
-            class="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md focus:border-cyan-500 focus:ring-cyan-500"
-          />
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-2.5 top-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  <div class="tab-content">
+    <!-- Chargement -->
+    <div v-if="loading && !error" class="py-10 text-center">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+      <p class="mt-2 text-gray-500">Chargement des favoris...</p>
+    </div>
+
+    <!-- État d'erreur -->
+    <div v-else-if="error" class="bg-red-50 p-6 rounded-lg mb-6">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          <svg class="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">Une erreur est survenue</h3>
+          <p class="mt-2 text-sm text-red-700">
+            {{ errorMessage || "Impossible de charger vos favoris. Veuillez réessayer ultérieurement." }}
+          </p>
         </div>
       </div>
     </div>
     
-    <!-- Chargement -->
-    <div v-if="loading" class="py-10 text-center">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
-      <p class="mt-2 text-gray-500">Chargement des favoris...</p>
+    <!-- Recherche -->
+    <div v-else-if="favorites.length > 0" class="mb-6">
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <input 
+          type="text" 
+          v-model="searchQuery" 
+          placeholder="Rechercher dans vos favoris..." 
+          class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+        >
+      </div>
     </div>
     
     <!-- Aucun favori -->
     <div v-else-if="favorites.length === 0" class="bg-gray-100 p-8 rounded-lg text-center">
-      <p class="text-gray-500">Vous n'avez pas encore d'annonces favorites.</p>
-      <a href="/annonces" class="mt-2 inline-block text-cyan-600 hover:text-cyan-900 hover:underline">
-        Parcourir les annonces
-      </a>
+      <div class="text-gray-400 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900">Aucun favori</h3>
+      <p class="mt-2 text-gray-500 mb-6">Vous n'avez pas encore d'annonces favorites.</p>
+      <div class="mt-6">
+        <NuxtLink to="/annonces" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
+          Parcourir les annonces
+        </NuxtLink>
+      </div>
     </div>
     
     <!-- Aucun résultat de recherche -->
-    <div v-else-if="filteredFavorites.length === 0" class="bg-gray-100 p-8 rounded-lg text-center">
-      <p class="text-gray-500">Aucune annonce ne correspond à votre recherche.</p>
-      <button @click="searchQuery = ''" class="mt-2 text-cyan-600 hover:text-cyan-900 hover:underline">
+    <div v-else-if="searchQuery && filteredFavorites.length === 0" class="bg-gray-100 p-8 rounded-lg text-center">
+      <div class="text-gray-400 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900">Aucun résultat</h3>
+      <p class="text-gray-500 mb-4">Aucune annonce ne correspond à votre recherche.</p>
+      <button 
+        @click="searchQuery = ''" 
+        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+      >
         Effacer la recherche
       </button>
     </div>
     
     <!-- Liste des favoris -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div 
-        v-for="favorite in paginatedFavorites" 
-        :key="favorite.id" 
-        class="bg-gray-100 rounded-lg overflow-hidden"
-        :class="{ 'ring-2 ring-cyan-500': selectedFavorites.includes(favorite.id) }"
-      >
-        <div class="relative">
-          <img :src="favorite.image" alt="Propriété" class="w-full h-48 object-cover" />
-          <span 
-            v-if="favorite.newPrice" 
-            class="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full"
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-for="(favorite, index) in filteredFavorites" :key="index" class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="relative pb-2/3">
+          <img 
+            v-if="favorite.annonce && favorite.annonce.photos && favorite.annonce.photos.length > 0" 
+            :src="favorite.annonce.photos[0]" 
+            :alt="favorite.annonce.titre || 'Photo du bien'" 
+            class="absolute h-full w-full object-cover"
           >
-            Prix baissé
-          </span>
-          
-          <!-- Checkbox de sélection -->
-          <div class="absolute top-2 left-2">
-            <input 
-              type="checkbox" 
-              :id="`select-${favorite.id}`" 
-              :checked="selectedFavorites.includes(favorite.id)" 
-              @change="toggleSelectFavorite(favorite.id)"
-              class="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
-            />
-            <label :for="`select-${favorite.id}`" class="sr-only">Sélectionner</label>
+          <div v-else class="absolute h-full w-full bg-gray-200 flex items-center justify-center">
+            <svg class="h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
           </div>
         </div>
         <div class="p-4">
-          <h3 class="font-medium text-lg">{{ favorite.title }}</h3>
-          <div class="flex justify-between items-center mt-1">
-            <p 
-              class="text-gray-700 font-semibold" 
-              :class="{'line-through text-gray-400': favorite.newPrice}"
-            >
-              {{ formatPrice(favorite.price) }}
-            </p>
-            <p v-if="favorite.newPrice" class="text-green-600 font-semibold">
-              {{ formatPrice(favorite.newPrice) }}
-            </p>
-          </div>
-          <p class="text-sm text-gray-500">{{ favorite.location }}</p>
-          <p class="text-sm text-gray-500">{{ favorite.type }} - {{ favorite.rooms }} pièces - {{ favorite.surface }} m²</p>
-          <div class="mt-4 flex justify-between">
-            <a 
-              :href="`/annonces/detail-${favorite.id}`" 
-              class="text-cyan-600 hover:text-cyan-900 hover:underline"
-            >
-              Voir l'annonce
-            </a>
+          <div class="flex justify-between">
+            <h3 class="text-lg font-medium text-gray-900 truncate">
+              {{ favorite.annonce?.titre || 'Annonce sans titre' }}
+            </h3>
             <button 
-              @click="removeFavorite(favorite.id)" 
-              class="text-gray-500 hover:text-red-500 text-sm flex items-center"
+              @click="removeFavorite(favorite)" 
+              class="text-red-500 hover:text-red-700 focus:outline-none"
+              title="Retirer des favoris"
             >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-             Retirer
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
             </button>
           </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Pagination -->
-    <div v-if="totalPages > 1" class="mt-6 flex justify-center">
-      <nav class="flex items-center">
-        <button 
-          @click="changePage(currentPage - 1)" 
-          :disabled="currentPage === 1"
-          :class="[
-            'px-3 py-1 border rounded-l-md',
-            currentPage === 1 
-              ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' 
-              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-          ]"
-        >
-          Précédent
-        </button>
-        
-        <button 
-          v-for="page in displayedPages" 
-          :key="page"
-          @click="changePage(page)"
-          :class="[
-            'px-3 py-1 border-t border-b',
-            currentPage === page 
-              ? 'bg-cyan-500 text-white border-cyan-500' 
-              : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'
-          ]"
-        >
-          {{ page }}
-        </button>
-        
-        <button 
-          @click="changePage(currentPage + 1)" 
-          :disabled="currentPage === totalPages"
-          :class="[
-            'px-3 py-1 border rounded-r-md',
-            currentPage === totalPages 
-              ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' 
-              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-          ]"
-        >
-          Suivant
-        </button>
-      </nav>
-    </div>
-    
-    <!-- Sélection d'annonces -->
-    <div v-if="favorites.length > 0" class="mt-8">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-medium text-gray-900">Actions groupées</h3>
-        <div class="flex items-center">
-          <span class="text-sm text-gray-600 mr-2">
-            {{ selectedFavorites.length }} annonce(s) sélectionnée(s)
-          </span>
-        </div>
-      </div>
-      
-      <div class="flex flex-wrap gap-2">
-        <button 
-          @click="selectAllFavorites" 
-          class="px-3 py-1.5 border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50"
-          :class="{ 'bg-gray-100': selectedFavorites.length === filteredFavorites.length }"
-        >
-          {{ selectedFavorites.length === filteredFavorites.length ? 'Désélectionner tout' : 'Sélectionner tout' }}
-        </button>
-        
-        <button 
-          @click="compareSelected" 
-          class="px-3 py-1.5 border border-cyan-500 bg-cyan-500 text-white text-sm rounded-md hover:bg-cyan-600"
-          :disabled="selectedFavorites.length < 2"
-          :class="{ 'opacity-50 cursor-not-allowed': selectedFavorites.length < 2 }"
-        >
-          Comparer
-        </button>
-        
-        <button 
-          @click="confirmRemoveSelected" 
-          class="px-3 py-1.5 border border-red-500 text-red-500 text-sm rounded-md hover:bg-red-50"
-          :disabled="selectedFavorites.length === 0"
-          :class="{ 'opacity-50 cursor-not-allowed': selectedFavorites.length === 0 }"
-        >
-          Supprimer la sélection
-        </button>
-      </div>
-    </div>
-    
-    <!-- Modal de comparaison -->
-    <div 
-      v-if="showCompareModal" 
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-    >
-      <div class="bg-white rounded-lg max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-medium text-gray-900">Comparaison des annonces</h3>
-          <button @click="showCompareModal = false" class="text-gray-400 hover:text-gray-500">
-            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          <p class="mt-1 text-lg font-semibold text-gray-900">
+            {{ formatPrice(favorite.annonce?.prix) }}
+          </p>
+          <p class="mt-1 text-sm text-gray-500 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-          </button>
-        </div>
-        
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse">
-            <thead>
-              <tr>
-                <th class="p-2 border text-left bg-gray-50">Caractéristique</th>
-                <th 
-                  v-for="favorite in comparedFavorites" 
-                  :key="favorite.id" 
-                  class="p-2 border text-center bg-gray-50 min-w-[200px]"
-                >
-                  {{ favorite.title }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Photos -->
-              <tr>
-                <td class="p-2 border font-medium">Photo</td>
-                <td v-for="favorite in comparedFavorites" :key="`img-${favorite.id}`" class="p-2 border text-center">
-                  <img :src="favorite.image" alt="Propriété" class="h-28 object-cover mx-auto" />
-                </td>
-              </tr>
-              
-              <!-- Prix -->
-              <tr>
-                <td class="p-2 border font-medium">Prix</td>
-                <td v-for="favorite in comparedFavorites" :key="`price-${favorite.id}`" class="p-2 border text-center">
-                  <div>
-                    <p 
-                      :class="{'line-through text-gray-400': favorite.newPrice}"
-                    >
-                      {{ formatPrice(favorite.price) }}
-                    </p>
-                    <p v-if="favorite.newPrice" class="text-green-600 font-semibold">
-                      {{ formatPrice(favorite.newPrice) }}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-              
-              <!-- Localisation -->
-              <tr>
-                <td class="p-2 border font-medium">Localisation</td>
-                <td v-for="favorite in comparedFavorites" :key="`loc-${favorite.id}`" class="p-2 border text-center">
-                  {{ favorite.location }}
-                </td>
-              </tr>
-              
-              <!-- Type -->
-              <tr>
-                <td class="p-2 border font-medium">Type</td>
-                <td v-for="favorite in comparedFavorites" :key="`type-${favorite.id}`" class="p-2 border text-center">
-                  {{ favorite.type }}
-                </td>
-              </tr>
-              
-              <!-- Surface -->
-              <tr>
-                <td class="p-2 border font-medium">Surface</td>
-                <td v-for="favorite in comparedFavorites" :key="`surface-${favorite.id}`" class="p-2 border text-center">
-                  {{ favorite.surface }} m²
-                </td>
-              </tr>
-              
-              <!-- Pièces -->
-              <tr>
-                <td class="p-2 border font-medium">Pièces</td>
-                <td v-for="favorite in comparedFavorites" :key="`rooms-${favorite.id}`" class="p-2 border text-center">
-                  {{ favorite.rooms }}
-                </td>
-              </tr>
-              
-              <!-- Prix au m² -->
-              <tr>
-                <td class="p-2 border font-medium">Prix au m²</td>
-                <td v-for="favorite in comparedFavorites" :key="`sqm-${favorite.id}`" class="p-2 border text-center">
-                  {{ formatPrice(favorite.newPrice ? favorite.newPrice / favorite.surface : favorite.price / favorite.surface) }}/m²
-                </td>
-              </tr>
-              
-              <!-- Autres caractéristiques -->
-              <tr v-for="(feature, index) in compareFeatures" :key="`feature-${index}`">
-                <td class="p-2 border font-medium">{{ feature.label }}</td>
-                <td 
-                  v-for="favorite in comparedFavorites" 
-                  :key="`${feature.key}-${favorite.id}`" 
-                  class="p-2 border text-center"
-                >
-                  <svg v-if="favorite[feature.key]" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500 mx-auto" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                  </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 mx-auto" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                  </svg>
-                </td>
-              </tr>
-              
-              <!-- Actions -->
-              <tr>
-                <td class="p-2 border font-medium">Actions</td>
-                <td v-for="favorite in comparedFavorites" :key="`actions-${favorite.id}`" class="p-2 border text-center">
-                  <a 
-                    :href="`/annonces/detail-${favorite.id}`" 
-                    class="text-cyan-600 hover:text-cyan-900 hover:underline block"
-                  >
-                    Voir l'annonce
-                  </a>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+            {{ favorite.annonce?.localisation || 'Emplacement non spécifié' }}
+          </p>
+          <div class="mt-2 flex space-x-4 text-sm text-gray-500">
+            <div v-if="favorite.annonce?.surface" class="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+              </svg>
+              {{ favorite.annonce.surface }} m²
+            </div>
+            <div v-if="favorite.annonce?.pieces" class="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              {{ favorite.annonce.pieces }} pièce(s)
+            </div>
+            <div v-if="favorite.annonce?.chambres" class="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              {{ favorite.annonce.chambres }} chambre(s)
+            </div>
+          </div>
+          <div class="mt-4">
+            <NuxtLink 
+              :to="`/annonces/${favorite.annonce?.id}`" 
+              class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-cyan-700 bg-cyan-100 hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+            >
+              Voir le détail
+            </NuxtLink>
+          </div>
         </div>
       </div>
     </div>
@@ -351,291 +149,244 @@
 </template>
 
 <script>
-import { useFavorites } from '~/composables/useFavorites';
+import { computed, ref } from 'vue';
+import { useDirectusSDK } from '~/composables/useDirectusSDK';
 import { useAuthStore } from '~/stores/useAuthStore';
 
 export default {
   name: 'FavoritesTab',
-  
   props: {
-    userId: {
-      type: String,
-      required: true
+    isActive: {
+      type: Boolean,
+      default: false
     }
   },
-  
   setup(props) {
+    const directusSDK = useDirectusSDK();
     const authStore = useAuthStore();
-    const { 
-      favorites, 
-      loading, 
-      fetchFavorites, 
-      toggleFavorite,
-      getFavoriteAnnonces
-    } = useFavorites();
     
-    // Initialisez les favoris
-    fetchFavorites(props.userId);
+    const loading = ref(false);
+    const error = ref(false);
+    const errorMessage = ref('');
+    const favorites = ref([]);
+    const searchQuery = ref('');
+    const dataRequested = ref(false);
     
-    return {
-      favorites,
-      loading,
-      toggleFavorite,
-      getFavoriteAnnonces,
-      authStore
-    };
-  },
-  
-  data() {
-    return {
-      searchQuery: '',
-      currentSort: 'recent',
-      showSortOptions: false,
-      selectedFavorites: [],
-      showCompareModal: false,
+    const filteredFavorites = computed(() => {
+      if (!searchQuery.value) return favorites.value;
       
-      // Options de tri
-      sortOptions: [
-        { label: 'Plus récentes', value: 'recent' },
-        { label: 'Prix croissant', value: 'price_asc' },
-        { label: 'Prix décroissant', value: 'price_desc' },
-        { label: 'Surface décroissante', value: 'surface_desc' }
-      ],
-      
-      // Caractéristiques pour la comparaison
-      compareFeatures: [
-        { key: 'elevator', label: 'Ascenseur' },
-        { key: 'balcony', label: 'Balcon/Terrasse' },
-        { key: 'parking', label: 'Parking' },
-        { key: 'garden', label: 'Jardin' },
-        { key: 'pool', label: 'Piscine' },
-        { key: 'secureAccess', label: 'Accès sécurisé' },
-        { key: 'furnished', label: 'Meublé' }
-      ]
-    };
-  },
-  
-  computed: {
-    // Filtrer les favoris selon la recherche
-    filteredFavorites() {
-      let result = [...this.favorites];
-      
-      // Filtre de recherche
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase();
-        result = result.filter(item => 
-          (item.annonce?.titre || '').toLowerCase().includes(query) || 
-          (item.annonce?.localisation || '').toLowerCase().includes(query) ||
-          (item.annonce?.type_bien || '').toLowerCase().includes(query)
+      const query = searchQuery.value.toLowerCase();
+      return favorites.value.filter(favorite => {
+        const annonce = favorite.annonce;
+        if (!annonce) return false;
+        
+        return (
+          (annonce.titre && annonce.titre.toLowerCase().includes(query)) ||
+          (annonce.description && annonce.description.toLowerCase().includes(query)) ||
+          (annonce.localisation && annonce.localisation.toLowerCase().includes(query)) ||
+          (annonce.type_bien && annonce.type_bien.toLowerCase().includes(query))
         );
-      }
-      
-      // Tri des résultats
-      switch(this.currentSort) {
-        case 'price_asc':
-          result.sort((a, b) => (a.annonce?.prix || 0) - (b.annonce?.prix || 0));
-          break;
-        case 'price_desc':
-          result.sort((a, b) => (b.annonce?.prix || 0) - (a.annonce?.prix || 0));
-          break;
-        case 'surface_desc':
-          result.sort((a, b) => (b.annonce?.surface || 0) - (a.annonce?.surface || 0));
-          break;
-        case 'recent':
-        default:
-          result.sort((a, b) => new Date(b.date_ajout || 0) - new Date(a.date_ajout || 0));
-          break;
-      }
-      
-      return result;
-    },
-    
-    // Favoris à afficher sur la page courante
-    paginatedFavorites() {
-      const start = (this.currentPage - 1) * this.itemsPerPage;
-      const end = start + this.itemsPerPage;
-      return this.filteredFavorites.slice(start, end);
-    },
-    
-    // Nombre total de pages
-    totalPages() {
-      return Math.ceil(this.filteredFavorites.length / this.itemsPerPage);
-    },
-    
-    // Pages à afficher dans la pagination
-    displayedPages() {
-      const pages = [];
-      const maxDisplayedPages = 5;
-      
-      if (this.totalPages <= maxDisplayedPages) {
-        // Afficher toutes les pages
-        for (let i = 1; i <= this.totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        // Afficher un sous-ensemble de pages
-        const leftOffset = Math.floor(maxDisplayedPages / 2);
-        let start = this.currentPage - leftOffset;
-        
-        if (start < 1) {
-          start = 1;
-        } else if (start + maxDisplayedPages > this.totalPages) {
-          start = this.totalPages - maxDisplayedPages + 1;
-        }
-        
-        for (let i = 0; i < maxDisplayedPages; i++) {
-          pages.push(start + i);
-        }
-      }
-      
-      return pages;
-    },
-    
-    // Favoris à comparer
-    comparedFavorites() {
-      return this.favorites
-        .filter(favorite => this.selectedFavorites.includes(favorite.id))
-        .map(favorite => favorite.annonce);
-    }
-  },
-  
-  created() {
-    // Fermer le menu de tri lors d'un clic à l'extérieur
-    document.addEventListener('click', this.clickOutside);
-  },
-  
-  beforeUnmount() {
-    // Nettoyer les écouteurs d'événements
-    document.removeEventListener('click', this.clickOutside);
-  },
-  
-  watch: {
-    // Réinitialiser la page courante lors d'une recherche
-    searchQuery() {
-      this.currentPage = 1;
-    }
-  },
-  
-  methods: {
-    // Changer de page
-    changePage(page) {
-      if (page < 1 || page > this.totalPages) return;
-      this.currentPage = page;
-      
-      // Remonter en haut de la liste
-      window.scrollTo({
-        top: this.$el.offsetTop,
-        behavior: 'smooth'
       });
-    },
+    });
     
-    // Supprimer un favori
-    async removeFavorite(favoriteId) {
-      if (!confirm('Êtes-vous sûr de vouloir retirer cette annonce de vos favoris ?')) {
+    async function fetchFavorites() {
+      // Vérifier si l'utilisateur est connecté
+      if (!authStore.user) {
+        console.log('Attente des données utilisateur...');
+        loading.value = true;
+        
+        // Attendre que les données utilisateur soient disponibles avec un timeout
+        const timeout = setTimeout(() => {
+          if (loading.value) {
+            console.error('Timeout: Impossible de récupérer les données utilisateur');
+            error.value = true;
+            errorMessage.value = 'Vous devez être connecté pour accéder à vos favoris.';
+            loading.value = false;
+            favorites.value = [];
+          }
+        }, 5000);
+
+        // Tenter de récupérer l'utilisateur directement
+        try {
+          const userResponse = await directusSDK.getSingle('users/me', {
+            fields: ['id']
+          });
+          
+          if (userResponse && userResponse.data && userResponse.data.id) {
+            console.log('Utilisateur récupéré directement:', userResponse.data.id);
+            clearTimeout(timeout);
+            await loadFavoritesForUser(userResponse.data.id);
+            return;
+          }
+        } catch (primaryError) {
+          console.warn('Impossible de récupérer l\'utilisateur directement:', primaryError);
+          // Continuer et attendre que l'utilisateur soit chargé dans le store
+        }
+        
+        // Attendre un peu que les données utilisateur soient chargées dans le store
+        let attempts = 0;
+        const maxAttempts = 10;
+        const checkInterval = setInterval(async () => {
+          attempts++;
+          if (authStore.user) {
+            console.log('Données utilisateur trouvées après attente');
+            clearInterval(checkInterval);
+            clearTimeout(timeout);
+            await loadFavoritesForUser(authStore.user.id);
+          } else if (attempts >= maxAttempts) {
+            console.error('Nombre maximum de tentatives atteint');
+            clearInterval(checkInterval);
+            clearTimeout(timeout);
+            error.value = true;
+            errorMessage.value = 'Impossible de vérifier votre identité. Veuillez vous reconnecter.';
+            loading.value = false;
+            favorites.value = [];
+          }
+        }, 500);
+        
         return;
       }
       
+      await loadFavoritesForUser(authStore.user.id);
+    }
+    
+    async function loadFavoritesForUser(userId) {
+      if (!userId) {
+        console.error('ID utilisateur manquant');
+        error.value = true;
+        errorMessage.value = 'Vous devez être connecté pour accéder à vos favoris.';
+        favorites.value = [];
+        loading.value = false;
+        return;
+      }
+
+      loading.value = true;
+      error.value = false;
+      
+      // Timeout pour éviter les chargements infinis
+      const timeout = setTimeout(() => {
+        if (loading.value) {
+          console.log('Timeout atteint lors du chargement des favoris');
+          loading.value = false;
+          favorites.value = [];
+        }
+      }, 5000);
+
       try {
-        await fetch(`/api/directus/items/favoris/${favoriteId}`, {
-          method: 'DELETE'
-        });
+        console.log('Chargement des favoris pour l\'utilisateur:', userId);
         
-        // Mise à jour locale
-        await this.fetchFavorites(this.userId);
+        // Utilisation du SDK plutôt que fetch direct
+        try {
+          // Utiliser client_id au lieu de utilisateur pour le filtre
+          const result = await directusSDK.getUserFavorites();
+          
+          console.log('Résultat de getUserFavorites:', result);
+          
+          if (result && Array.isArray(result)) {
+            // Les données d'annonce sont déjà incluses via la relation configurée
+            favorites.value = result;
+          } else {
+            // Fallback avec fetch direct si le SDK ne fonctionne pas comme prévu
+            const url = `/api/directus/items/favoris?filter[client_id][_eq]=${userId}&fields=*,annonce.*`;
+            
+            console.log('URL de la requête de secours:', url);
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            
+            const jsonData = await response.json();
+            console.log('Réponse fetch direct:', jsonData);
+            
+            if (jsonData && jsonData.data && Array.isArray(jsonData.data)) {
+              favorites.value = jsonData.data;
+            } else {
+              favorites.value = [];
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors de la récupération des favoris:', error);
+          throw error;
+        }
         
-        // Mise à jour de la sélection
-        this.selectedFavorites = this.selectedFavorites.filter(favId => favId !== favoriteId);
+      } catch (error) {
+        console.error('Erreur lors du chargement des favoris:', error);
+        error.value = true;
+        errorMessage.value = error.message || 'Erreur lors du chargement des favoris';
+        favorites.value = [];
+      } finally {
+        clearTimeout(timeout);
+        loading.value = false;
+      }
+    }
+    
+    async function removeFavorite(favorite) {
+      try {
+        await directusSDK.deleteItem('favoris', favorite.id);
+        favorites.value = favorites.value.filter(f => f.id !== favorite.id);
+        // Afficher une notification
+        // this.$toast.success('Favori supprimé avec succès');
       } catch (error) {
         console.error('Erreur lors de la suppression du favori:', error);
-        alert('Une erreur est survenue lors de la suppression du favori');
+        // this.$toast.error('Impossible de supprimer le favori');
       }
-    },
-    
-    // Définir l'ordre de tri
-    setSortOrder(order) {
-      this.currentSort = order;
-      this.showSortOptions = false;
-      this.currentPage = 1;
-    },
-    
-    // Fermer le menu de tri lors d'un clic à l'extérieur
-    clickOutside(event) {
-      if (this.showSortOptions && !event.target.closest('button')) {
-        this.showSortOptions = false;
-      }
-    },
-    
-    // Sélectionner/désélectionner un favori
-    toggleSelectFavorite(id) {
-      const index = this.selectedFavorites.indexOf(id);
-      if (index === -1) {
-        this.selectedFavorites.push(id);
-      } else {
-        this.selectedFavorites.splice(index, 1);
-      }
-    },
-    
-    // Sélectionner/désélectionner tous les favoris
-    selectAllFavorites() {
-      if (this.selectedFavorites.length === this.filteredFavorites.length) {
-        // Tout désélectionner
-        this.selectedFavorites = [];
-      } else {
-        // Tout sélectionner
-        this.selectedFavorites = this.filteredFavorites.map(fav => fav.id);
-      }
-    },
-    
-    // Comparer les annonces sélectionnées
-    compareSelected() {
-      if (this.selectedFavorites.length < 2) {
-        alert('Veuillez sélectionner au moins 2 annonces à comparer');
-        return;
-      }
-      
-      this.showCompareModal = true;
-    },
-    
-    // Confirmer la suppression des favoris sélectionnés
-    confirmRemoveSelected() {
-      if (this.selectedFavorites.length === 0) return;
-      
-      if (confirm(`Êtes-vous sûr de vouloir retirer ${this.selectedFavorites.length} annonce(s) de vos favoris ?`)) {
-        this.removeSelectedFavorites();
-      }
-    },
-    
-    // Supprimer les favoris sélectionnés
-    async removeSelectedFavorites() {
-      try {
-        const deletePromises = this.selectedFavorites.map(id => 
-          fetch(`/api/directus/items/favoris/${id}`, {
-            method: 'DELETE'
-          })
-        );
-        
-        await Promise.all(deletePromises);
-        
-        // Mise à jour locale
-        await this.fetchFavorites(this.userId);
-        
-        // Réinitialiser la sélection
-        this.selectedFavorites = [];
-        
-        // Vérifier si on doit ajuster la page courante
-        if (this.filteredFavorites.length === 0 && this.currentPage > 1) {
-          this.currentPage = Math.max(1, this.currentPage - 1);
-        }
-      } catch (error) {
-        console.error('Erreur lors de la suppression des favoris:', error);
-        alert('Une erreur est survenue lors de la suppression des favoris');
-      }
-    },
-    
-    // Formater un prix
-    formatPrice(price) {
-      return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(price || 0);
     }
+    
+    function formatPrice(price) {
+      if (!price) return 'Prix non spécifié';
+      return new Intl.NumberFormat('fr-FR', { 
+        style: 'currency', 
+        currency: 'EUR',
+        maximumFractionDigits: 0 
+      }).format(price);
+    }
+    
+    // Chargement initial des données
+    let unwatch = null;
+    
+    if (props.isActive && !dataRequested.value) {
+      fetchFavorites();
+      dataRequested.value = true;
+    } else {
+      unwatch = watch(() => props.isActive, (newVal) => {
+        if (newVal && !dataRequested.value) {
+          fetchFavorites();
+          dataRequested.value = true;
+          
+          // Nettoyer le watcher après utilisation
+          if (unwatch) {
+            unwatch();
+            unwatch = null;
+          }
+        }
+      });
+    }
+    
+    // Nettoyage à la destruction du composant
+    onUnmounted(() => {
+      if (unwatch) {
+        unwatch();
+      }
+    });
+    
+    return {
+      loading,
+      error,
+      errorMessage,
+      favorites,
+      searchQuery,
+      filteredFavorites,
+      removeFavorite,
+      formatPrice
+    };
   }
 };
 </script>
+
+<style scoped>
+/* Tailwind gère déjà la majorité des styles */
+.pb-2\/3 {
+  padding-bottom: 66.666667%;
+}
+</style>

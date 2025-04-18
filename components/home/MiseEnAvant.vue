@@ -1,3 +1,4 @@
+<!-- MiseEnAvant.vue -->
 <template>
   <section class="py-16 bg-zinc-200">
     <div class="container mx-auto px-4">

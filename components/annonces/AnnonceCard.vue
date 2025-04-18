@@ -94,7 +94,7 @@
           <button @click="showLoginModal = false" class="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
             Annuler
           </button>
-          <NuxtLink to="/connexion" class="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700">
+          <NuxtLink to="/login" class="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700">
             Se connecter
           </NuxtLink>
         </div>

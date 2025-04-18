@@ -88,9 +88,9 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-if="filteredAds.length === 0" class="hover:bg-gray-50">
+            <tr v-if="ads.length === 0" class="hover:bg-gray-50">
               <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                Aucune publicité correspondant à vos critères
+                Aucune publicité disponible
               </td>
             </tr>
             <tr v-for="ad in filteredAds" :key="ad.id" class="hover:bg-gray-50">
@@ -125,8 +125,12 @@
                     <div v-if="ad.start_date && ad.end_date">
                       {{ formatDate(ad.start_date) }} - {{ formatDate(ad.end_date) }}
                     </div>
-                    <div v-if="ad.days_left" :class="{'text-red-600 font-medium': ad.days_left <= 7}">
-                      Expire dans {{ ad.days_left }} jours
+                    <div v-if="ad.duree" class="text-gray-600">
+                      Durée: {{ ad.duree }} jours
+                    </div>
+                    <div v-if="ad.days_left !== null" :class="{'text-red-600 font-medium': ad.days_left <= 7}">
+                      <span v-if="ad.days_left > 0">Expire dans {{ ad.days_left }} jours</span>
+                      <span v-else class="text-red-600 font-medium">Expirée</span>
                     </div>
                   </div>
                 </div>
@@ -202,6 +206,18 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  
+                  <!-- Bouton Prolonger (pour les publicités expirées) -->
+                  <button 
+                    v-if="ad.status === 'expired' || (ad.end_date && new Date(ad.end_date) < new Date())"
+                    @click="showExtendDurationDialog(ad.id)"
+                    class="text-blue-600 hover:text-blue-800"
+                    title="Prolonger la publicité"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </button>
                   
@@ -298,6 +314,70 @@
       </div>
     </div>
     
+    <!-- Modal de prolongation de durée -->
+    <div v-if="extendDurationModal.show" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                  Prolonger la publicité
+                </h3>
+                <div class="mt-4">
+                  <p class="text-sm text-gray-500 mb-4">
+                    Sélectionnez la durée pour laquelle vous souhaitez prolonger cette publicité.
+                  </p>
+                  
+                  <div class="mt-4">
+                    <label for="extension-days" class="block text-sm font-medium text-gray-700">Durée (en jours)</label>
+                    <select 
+                      id="extension-days" 
+                      v-model="extendDurationModal.days" 
+                      class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm rounded-md"
+                    >
+                      <option value="7">7 jours</option>
+                      <option value="15">15 jours</option>
+                      <option value="30">30 jours</option>
+                      <option value="60">60 jours</option>
+                      <option value="90">90 jours</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button 
+              type="button" 
+              @click="confirmExtendDuration()"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Prolonger
+            </button>
+            <button 
+              type="button" 
+              @click="cancelExtendDuration()"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <!-- Notification toast pour les messages de succès -->
     <div 
       v-if="notification.show" 
@@ -315,6 +395,8 @@
 </template>
 
 <script>
+import { useDirectusSDK } from '@/composables/useDirectusSDK';
+
 export default {
   name: 'AdsTab',
   
@@ -325,7 +407,14 @@ export default {
     }
   },
   
-  emits: ['update-success'],
+  setup() {
+    // Initialiser le service SDK Directus
+    const directusSDK = useDirectusSDK();
+    
+    return {
+      directusSDK
+    };
+  },
   
   data() {
     return {
@@ -349,6 +438,13 @@ export default {
         show: false,
         message: '',
         timer: null
+      },
+      
+      // Modal de prolongation de durée
+      extendDurationModal: {
+        show: false,
+        adId: null,
+        days: 30
       }
     };
   },
@@ -406,7 +502,7 @@ export default {
   },
   
   mounted() {
-    this.loadTestData();
+    this.fetchAds();
   },
   
   beforeDestroy() {
@@ -417,257 +513,233 @@ export default {
   },
   
   methods: {
-    // Charger des données de test
-    loadTestData() {
-      this.loading = true;
-      
-      // Charger directement des données de test pour être sûr qu'elles s'affichent
-      setTimeout(() => {
-        this.ads = [
-          {
-            id: '1',
-            title: 'Bannière promotionnelle été',
-            type: 'banner',
-            location: 'homepage',
-            dimensions: '728x90 px',
-            image: 'https://placehold.co/728x90',
-            url: 'https://example.com/promo',
-            price: 25000,
-            start_date: '2023-06-01',
-            end_date: '2023-07-31',
-            days_left: 45,
-            status: 'active',
-            impressions: 12456,
-            clicks: 348,
-            ctr: 0.0279 // Click-through rate
-          },
-          {
-            id: '2',
-            title: 'Offre spéciale investisseurs',
-            type: 'sidebar',
-            location: 'listing_page',
-            dimensions: '300x250 px',
-            image: 'https://placehold.co/300x250',
-            url: 'https://example.com/invest',
-            price: 18000,
-            start_date: '2023-04-15',
-            end_date: '2023-05-15',
-            days_left: 4,
-            status: 'active',
-            impressions: 8765,
-            clicks: 215,
-            ctr: 0.0245
-          },
-          {
-            id: '3',
-            title: 'Annonce financement immobilier',
-            type: 'popup',
-            location: 'exit_intent',
-            dimensions: '500x400 px',
-            image: 'https://placehold.co/500x400',
-            url: 'https://example.com/finance',
-            price: 35000,
-            start_date: '2023-03-01',
-            end_date: '2023-06-01',
-            days_left: 22,
-            status: 'suspended',
-            impressions: 5432,
-            clicks: 178,
-            ctr: 0.0328
-          },
-          {
-            id: '4',
-            title: 'Bannière agence immobilière',
-            type: 'banner',
-            location: 'search_results',
-            dimensions: '728x90 px',
-            image: null,
-            url: 'https://example.com/agency',
-            price: 15000,
-            start_date: null,
-            end_date: null,
-            days_left: null,
-            status: 'pending',
-            impressions: 0,
-            clicks: 0,
-            ctr: 0
-          }
-        ];
-        
-        this.totalItems = this.ads.length;
-        this.loading = false;
-        
-        console.log("Données fictives chargées:", this.ads);
-        
-        // Après chargement, tenter de récupérer les données réelles de l'API
-        this.fetchAds();
-      }, 300);
-    },
-    
-    // Récupérer les publicités depuis l'API
+    // Méthode fetchAds() mise à jour pour utiliser client_id
     async fetchAds() {
+      this.loading = true;
+      this.error = null;
+      
+      // Timeout pour éviter les chargements infinis
+      const timeout = setTimeout(() => {
+        if (this.loading) {
+          console.log('Timeout atteint lors du chargement des publicités');
+          this.loading = false;
+          this.ads = [];
+        }
+      }, 5000);
+      
       try {
-        // Appel à l'API via notre proxy Directus
-        const response = await fetch(`/api/directus/items/publicite?filter[user_created][_eq]=${this.userId}&fields=*&sort=-date_created`);
+        console.log('Début de fetchAds()');
+        
+        // Récupérer l'ID utilisateur depuis les props
+        const userId = this.userId;
+        console.log('ID Utilisateur:', userId);
+        
+        if (!userId) {
+          throw new Error('Utilisateur non identifié');
+        }
+        
+        // Utiliser d'abord la méthode standardisée du SDK si disponible
+        try {
+          console.log('Tentative de récupération via SDK...');
+          const result = await this.directusSDK.getUserAds();
+          
+          if (result && result.data && result.data.length > 0) {
+            console.log('Publicités récupérées via SDK:', result.data);
+            // Traitement des données ici...
+            this.processAdsData(result.data);
+            return;
+          } else {
+            console.log('Aucune publicité trouvée via SDK, essai avec client_id explicite...');
+          }
+        } catch (sdkError) {
+          console.warn('SDK non disponible ou erreur:', sdkError);
+        }
+        
+        // Fallback: utiliser le SDK avec client_id explicite
+        try {
+          const fallbackResult = await this.directusSDK.getItems('publicite', {
+            filter: { client_id: { _eq: userId } },
+            fields: '*'
+          });
+          
+          if (fallbackResult && fallbackResult.data && fallbackResult.data.length > 0) {
+            console.log('Publicités récupérées via fallback SDK:', fallbackResult.data);
+            this.processAdsData(fallbackResult.data);
+            return;
+          } else {
+            console.log('Aucune publicité trouvée via fallback SDK, essai avec fetch direct...');
+          }
+        } catch (fallbackError) {
+          console.warn('Fallback SDK échoué:', fallbackError);
+        }
+        
+        // Dernier recours: utiliser fetch directement avec le standard client_id
+        const response = await fetch(`/api/directus/items/publicite?filter[client_id][_eq]=${userId}`);
         
         if (!response.ok) {
-          console.warn("API non disponible, données fictives conservées");
+          const errorData = await response.json();
+          console.error('Erreur détaillée API:', errorData);
+          throw new Error(`Erreur API: ${errorData?.errors?.[0]?.message || response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('Réponse brute de publicites:', result);
+        
+        if (!result.data || result.data.length === 0) {
+          console.log('Aucune publicité trouvée');
+          this.ads = [];
+          this.totalItems = 0;
           return;
         }
         
-        const data = await response.json();
+        this.processAdsData(result.data);
         
-        if (data && data.data && data.data.length > 0) {
-          // Transformer les données pour correspondre au format attendu
-          const apiAds = data.data.map(ad => {
-            // Calculer les jours restants
-            let daysLeft = null;
-            if (ad.date_fin) {
-              const endDate = new Date(ad.date_fin);
-              const today = new Date();
-              const diff = endDate - today;
-              daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-            }
-            
-            return {
-              id: ad.id,
-              title: ad.titre || 'Sans titre',
-              type: ad.type || 'banner',
-              location: ad.emplacement || 'homepage',
-              dimensions: ad.dimensions || '',
-              image: ad.image ? `/uploads/${ad.image}` : null,
-              url: ad.url || '#',
-              price: ad.prix || 0,
-              start_date: ad.date_debut || null,
-              end_date: ad.date_fin || null,
-              days_left: daysLeft,
-              status: ad.status || 'pending',
-              impressions: ad.impressions || 0,
-              clicks: ad.clics || 0,
-              ctr: ad.clics && ad.impressions ? (ad.clics / ad.impressions) : 0
-            };
-          });
-          
-          // Remplacer les données fictives par les données réelles
-          this.ads = apiAds;
-          this.totalItems = apiAds.length;
-          console.log("Données réelles chargées:", this.ads);
-        }
       } catch (error) {
         console.error('Erreur lors du chargement des publicités:', error);
-        // Conserver les données fictives en cas d'erreur
+        this.error = error.message || "Impossible de charger vos publicités.";
+        this.ads = [];
+        this.totalItems = 0;
+      } finally {
+        clearTimeout(timeout);
+        this.loading = false;
       }
     },
-    
-    // Obtenir la classe CSS pour un statut
-    getStatusClass(status) {
-      switch (status) {
-        case 'active':
-        case 'published':
-          return 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800';
-        case 'pending':
-        case 'draft':
-          return 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800';
-        case 'suspended':
-          return 'px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800';
-        case 'expired':
-          return 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800';
-        default:
-          return 'px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800';
-      }
-    },
-    
-    // Obtenir le libellé français pour un statut
-    getStatusLabel(status) {
-      switch (status) {
-        case 'active':
-        case 'published':
-          return 'Active';
-        case 'pending':
-        case 'draft':
-          return 'En attente';
-        case 'suspended':
-          return 'Suspendue';
-        case 'expired':
-        case 'archived':
-          return 'Terminée';
-        case 'rejected':
-          return 'Rejetée';
-        default:
-          return status || 'Inconnu';
-      }
-    },
-    
-    // Obtenir le libellé pour un type de publicité
-    getTypeLabel(type) {
-      switch (type) {
-        case 'banner':
-          return 'Bannière';
-        case 'sidebar':
-          return 'Sidebar';
-        case 'popup':
-          return 'Popup';
-        default:
-          return type || 'Inconnu';
-      }
-    },
-    
-    // Obtenir le libellé pour un emplacement
-    getLocationLabel(location) {
-      switch (location) {
-        case 'homepage':
-          return 'Page d\'accueil';
-        case 'listing_page':
-          return 'Page de liste d\'annonces';
-        case 'search_results':
-          return 'Résultats de recherche';
-        case 'detail_page':
-          return 'Page de détail d\'annonce';
-        case 'exit_intent':
-          return 'Intention de sortie (popup)';
-        default:
-          return location || 'Inconnu';
-      }
-    },
-    
-    // Formater un prix en euros
-    formatPrice(cents) {
-      if (cents === undefined || cents === null) return 'N/A';
+
+    // Méthode pour traiter les données récupérées
+    processAdsData(data) {
+      this.ads = data.map(ad => ({
+        id: ad.id,
+        title: ad.titre || 'Sans titre',
+        type: ad.emplacement || 'banner',
+        location: ad.emplacement || 'homepage',
+        url: ad.url || '#',
+        image: ad.image ? `/uploads/${ad.image}` : null,
+        start_date: ad.date_debut || null,
+        end_date: ad.date_fin || null,
+        duree: ad.duree || null,
+        price: ad.prix || 0,
+        status: ad.status || ad.statut_affichage || 'draft',
+        days_left: ad.date_fin ? Math.max(0, Math.ceil((new Date(ad.date_fin) - new Date()) / (1000 * 60 * 60 * 24))) : null,
+        impressions: ad.impressions || 0,
+        clicks: ad.clics || 0,
+        ctr: ad.clics && ad.impressions ? (ad.clics / ad.impressions) : 0,
+        dimensions: '300x250' // Valeur par défaut, à remplacer par une propriété réelle si disponible
+      }));
       
-      return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR',
-        maximumFractionDigits: 0
-      }).format(cents);
-    },
-    
-    // Formater une date
-    formatDate(dateStr) {
-      if (!dateStr) return 'N/A';
+      // Vérifier si des publicités sont expirées et mettre à jour leur statut
+      const now = new Date();
+      this.ads.forEach(ad => {
+        if (ad.end_date && new Date(ad.end_date) < now && ad.status === 'active') {
+          ad.status = 'expired';
+        }
+      });
       
-      const date = new Date(dateStr);
-      return new Intl.DateTimeFormat('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }).format(date);
+      this.totalItems = this.ads.length;
+      console.log('Publicités transformées:', this.ads);
     },
     
-    // Voir les statistiques d'une publicité
-    viewAdStats(adId) {
-      this.showNotification(`Redirection vers les statistiques de la publicité #${adId}`);
+    // Calculer la date de fin à partir de la date de début et de la durée
+    calculateEndDate(startDate, duration) {
+      if (!startDate || !duration) return null;
+      
+      try {
+        // Convertir la chaîne de date en objet Date
+        const start = new Date(startDate);
+        
+        // Ajouter le nombre de jours spécifié dans durée
+        const end = new Date(start);
+        end.setDate(start.getDate() + Number(duration));
+        
+        // Formater la date pour MySQL (YYYY-MM-DD HH:MM:SS)
+        return this.formatDateForMySQL(end);
+      } catch (error) {
+        console.error('Erreur lors du calcul de la date de fin:', error);
+        return null;
+      }
     },
-    
-    // Modifier une publicité
-    editAd(adId) {
-      this.showNotification(`Redirection vers l'édition de la publicité #${adId}`);
+
+    // Formater une date pour MySQL
+    formatDateForMySQL(date) {
+      if (!date) return null;
+      
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     },
-    
+
+    // Mise à jour d'une publicité avec gestion de la durée
+    async updateAd(adId, adData) {
+      try {
+        // Si date_debut et duree sont définies, calculer date_fin
+        if (adData.date_debut && adData.duree) {
+          adData.date_fin = this.calculateEndDate(adData.date_debut, adData.duree);
+        }
+        
+        // Utiliser updateItem du SDK
+        await this.directusSDK.updateItem('publicite', adId, adData);
+        
+        // Mettre à jour localement
+        const index = this.ads.findIndex(a => a.id === adId);
+        if (index !== -1) {
+          // Mettre à jour l'élément dans le tableau
+          this.ads[index] = { ...this.ads[index], ...adData };
+          
+          // Recalculer days_left si date_fin a été mise à jour
+          if (adData.date_fin) {
+            this.ads[index].days_left = Math.max(0, Math.ceil(
+              (new Date(adData.date_fin) - new Date()) / (1000 * 60 * 60 * 24)
+            ));
+          }
+        }
+        
+        this.showNotification('Publicité mise à jour avec succès');
+        return true;
+      } catch (error) {
+        console.error('Erreur lors de la mise à jour de la publicité:', error);
+        alert('Une erreur est survenue. Veuillez réessayer.');
+        return false;
+      }
+    },
+
+    // Création d'une publicité avec gestion de la durée
+    async createAd(adData) {
+      try {
+        // Assurer que client_id est défini (en utilisant le userId des props)
+        adData.client_id = this.userId;
+        
+        // Si date_debut et duree sont définies, calculer date_fin
+        if (adData.date_debut && adData.duree) {
+          adData.date_fin = this.calculateEndDate(adData.date_debut, adData.duree);
+        }
+        
+        // Utiliser createItem du SDK
+        const createdAd = await this.directusSDK.createItem('publicite', adData);
+        
+        // Rafraîchir la liste des publicités
+        await this.fetchAds();
+        
+        this.showNotification('Publicité créée avec succès');
+        return createdAd;
+      } catch (error) {
+        console.error('Erreur lors de la création de la publicité:', error);
+        alert('Une erreur est survenue. Veuillez réessayer.');
+        return null;
+      }
+    },
+
     // Suspendre une publicité
     async suspendAd(adId) {
-      if (confirm('Êtes-vous sûr de vouloir suspendre cette publicité ? Elle ne sera plus visible pour les visiteurs jusqu\'à sa réactivation.')) {
+      if (confirm('Êtes-vous sûr de vouloir suspendre cette publicité ?')) {
         try {
-          // Mise à jour locale
+          // Utiliser updateItem du SDK
+          await this.directusSDK.updateItem('publicite', adId, { status: 'suspended' });
+          
+          // Mettre à jour localement
           const index = this.ads.findIndex(a => a.id === adId);
           if (index !== -1) {
             this.ads[index].status = 'suspended';
@@ -680,11 +752,31 @@ export default {
         }
       }
     },
-    
+
     // Réactiver une publicité
     async reactivateAd(adId) {
       try {
-        // Mise à jour locale
+        // Vérifier si la date de fin est passée
+        const adIndex = this.ads.findIndex(a => a.id === adId);
+        if (adIndex !== -1) {
+          const ad = this.ads[adIndex];
+          const now = new Date();
+          const endDate = ad.end_date ? new Date(ad.end_date) : null;
+          
+          // Si la date de fin est passée, demander confirmation pour prolonger
+          if (endDate && endDate < now) {
+            if (confirm('Cette publicité a expiré. Voulez-vous prolonger sa durée ?')) {
+              // Ouvrir le formulaire de prolongation
+              this.showExtendDurationDialog(adId);
+              return;
+            }
+          }
+        }
+        
+        // Utiliser updateItem du SDK
+        await this.directusSDK.updateItem('publicite', adId, { status: 'active' });
+        
+        // Mettre à jour localement
         const index = this.ads.findIndex(a => a.id === adId);
         if (index !== -1) {
           this.ads[index].status = 'active';
@@ -696,12 +788,15 @@ export default {
         alert('Une erreur est survenue. Veuillez réessayer.');
       }
     },
-    
+
     // Supprimer une publicité
     async deleteAd(adId) {
-      if (confirm('Êtes-vous sûr de vouloir supprimer cette publicité ? Cette action est irréversible.')) {
+      if (confirm('Êtes-vous sûr de vouloir supprimer cette publicité ?')) {
         try {
-          // Mise à jour locale
+          // Utiliser deleteItem du SDK
+          await this.directusSDK.deleteItem('publicite', adId);
+          
+          // Mettre à jour localement
           this.ads = this.ads.filter(a => a.id !== adId);
           this.totalItems--;
           
@@ -713,7 +808,188 @@ export default {
       }
     },
     
-    // Afficher une notification temporaire
+    // Afficher le modal de prolongation de durée
+    showExtendDurationDialog(adId) {
+      this.extendDurationModal.adId = adId;
+      this.extendDurationModal.show = true;
+    },
+    
+    // Annuler la prolongation de durée
+    cancelExtendDuration() {
+      this.extendDurationModal.show = false;
+      this.extendDurationModal.adId = null;
+    },
+    
+    // Confirmer la prolongation de durée
+    async confirmExtendDuration() {
+      if (!this.extendDurationModal.adId || !this.extendDurationModal.days) {
+        alert('Veuillez sélectionner une durée valide');
+        return;
+      }
+      
+      try {
+        const adId = this.extendDurationModal.adId;
+        const additionalDays = Number(this.extendDurationModal.days);
+        
+        await this.extendAdDuration(adId, additionalDays);
+        
+        // Fermer le modal
+        this.extendDurationModal.show = false;
+        this.extendDurationModal.adId = null;
+      } catch (error) {
+        console.error('Erreur lors de la prolongation:', error);
+        alert('Une erreur est survenue. Veuillez réessayer.');
+      }
+    },
+    
+    // Étendre la durée d'une publicité
+    async extendAdDuration(adId, additionalDays) {
+      try {
+        const adIndex = this.ads.findIndex(a => a.id === adId);
+        if (adIndex === -1) {
+          throw new Error('Publicité non trouvée');
+        }
+        
+        const ad = this.ads[adIndex];
+        const now = new Date();
+        let newStartDate = now;
+        let newEndDate = null;
+        
+        // Si la publicité n'a pas expiré, ajouter des jours à la date de fin existante
+        if (ad.end_date && new Date(ad.end_date) > now) {
+          newEndDate = new Date(ad.end_date);
+          newEndDate.setDate(newEndDate.getDate() + Number(additionalDays));
+        } else {
+          // Si la publicité a expiré, commencer à partir d'aujourd'hui
+          newEndDate = new Date(now);
+          newEndDate.setDate(now.getDate() + Number(additionalDays));
+        }
+        
+        // Calculer la nouvelle durée totale
+        const newDuration = Math.ceil((newEndDate - newStartDate) / (1000 * 60 * 60 * 24));
+        
+        // Mettre à jour la publicité avec les nouvelles dates et durée
+        const updateData = {
+          date_debut: this.formatDateForMySQL(newStartDate),
+          date_fin: this.formatDateForMySQL(newEndDate),
+          duree: newDuration,
+          status: 'active' // Réactiver automatiquement
+        };
+        
+        // Utiliser updateItem du SDK
+        await this.directusSDK.updateItem('publicite', adId, updateData);
+        
+        // Mettre à jour localement
+        Object.assign(this.ads[adIndex], {
+          start_date: updateData.date_debut,
+          end_date: updateData.date_fin,
+          duree: newDuration,
+          status: 'active',
+          days_left: newDuration
+        });
+        
+        this.showNotification(`Publicité prolongée avec succès pour ${additionalDays} jours`);
+        return true;
+      } catch (error) {
+        console.error('Erreur lors de l\'extension de la durée de la publicité:', error);
+        alert('Une erreur est survenue. Veuillez réessayer.');
+        return false;
+      }
+    },
+    
+    // Méthodes de mapping des statuts
+    getStatusClass(status) {
+      const statusMap = {
+        'draft': 'bg-gray-100 text-gray-800',
+        'active': 'bg-green-100 text-green-800',
+        'archived': 'bg-gray-200 text-gray-600',
+        'suspended': 'bg-red-100 text-red-800',
+        'pending': 'bg-yellow-100 text-yellow-800',
+        'expired': 'bg-red-50 text-red-600'
+      };
+      return `px-2 py-1 text-xs font-medium rounded-md ${statusMap[status] || 'bg-gray-100 text-gray-800'}`;
+    },
+
+    getStatusLabel(status) {
+      const statusLabels = {
+        'draft': 'Brouillon',
+        'active': 'Actif',
+        'archived': 'Archivé',
+        'suspended': 'Suspendu',
+        'pending': 'En attente',
+        'expired': 'Expiré'
+      };
+      return statusLabels[status] || status;
+    },
+
+    // Obtenir le label du type d'emplacement
+    getTypeLabel(type) {
+      const typeLabels = {
+        'banner': 'Bannière',
+        'sidebar': 'Barre latérale',
+        'homepage': 'Page d\'accueil',
+        'search_results': 'Résultats de recherche',
+        'listing_page': 'Page d\'annonce',
+        'popup': 'Pop-up'
+      };
+      return typeLabels[type] || type;
+    },
+
+    // Obtenir le label de l'emplacement
+    getLocationLabel(location) {
+      const locationLabels = {
+        'homepage': 'Page d\'accueil',
+        'search_results': 'Résultats de recherche',
+        'listing_page': 'Page d\'annonce',
+        'sidebar': 'Barre latérale',
+        'footer': 'Pied de page',
+        'header': 'En-tête'
+      };
+      return locationLabels[location] || location;
+    },
+    
+    // Formater une date pour l'affichage
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      
+      const date = new Date(dateStr);
+      
+      // Vérifier si la date est valide
+      if (isNaN(date.getTime())) {
+        return 'Date invalide';
+      }
+      
+      // Formater la date en français
+      const options = { day: 'numeric', month: 'short', year: 'numeric' };
+      return date.toLocaleDateString('fr-FR', options);
+    },
+
+    // Formater un prix en euros
+    formatPrice(cents) {
+      if (cents === null || cents === undefined) return '0,00 €';
+      
+      // S'assurer que nous avons un nombre
+      const price = Number(cents);
+      
+      // Formater avec séparateur de milliers et 2 décimales
+      return price.toLocaleString('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    },
+    
+    // Méthodes pour les actions
+    viewAdStats(adId) { 
+      this.showNotification(`Redirection vers les statistiques de la publicité #${adId}`);
+    },
+    
+    editAd(adId) {
+      this.showNotification(`Redirection vers l'édition de la publicité #${adId}`);
+    },
+    
+    // Notification toast
     showNotification(message) {
       // Nettoyer tout timer existant
       if (this.notification.timer) {

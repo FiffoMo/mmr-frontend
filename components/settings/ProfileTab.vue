@@ -2,24 +2,6 @@
   <div class="p-6">
     <h2 class="text-2xl font-bold text-gray-900 mb-6">Mon profil</h2>
     
-    <!-- Message de chargement -->
-    <div v-if="loading || directusSDK.loading" class="text-center py-10">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
-      <p class="text-gray-600">Chargement de votre profil...</p>
-    </div>
-    
-    <!-- Message d'erreur -->
-    <div v-else-if="error || directusSDK.error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-      <p class="font-medium">Une erreur est survenue</p>
-      <p class="text-sm">{{ error || directusSDK.error }}</p>
-      <button 
-        @click="fetchUserProfile" 
-        class="mt-2 text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded"
-      >
-        Réessayer
-      </button>
-    </div>
-    
     <!-- Débogage du profil -->
     <div class="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200">
       <h3 class="font-bold text-blue-800">Débogage ProfileTab</h3>
@@ -193,7 +175,7 @@
         </div>
         
         <!-- Adresse -->
-        <div class="space-y-2">
+                 <div class="space-y-2">
           <div class="flex justify-between">
             <label for="address" class="block text-sm font-medium text-gray-700">Adresse</label>
             <div class="flex items-center">
@@ -306,7 +288,6 @@ export default {
       loading: false,
       saving: false,
       error: null,
-      shouldRefreshData: false,
       
       // Formulaire de profil
       profileForm: {
@@ -315,7 +296,7 @@ export default {
         last_name: '',
         email: '',
         
-        // Nouveaux champs
+        // Champs supplémentaires
         avatar: null,
         avatar_file: null, // Pour le téléchargement du fichier
         company: '',
@@ -362,60 +343,47 @@ export default {
   
   mounted() {
     console.log('ProfileTab monté');
-    // Si l'utilisateur a déjà été fourni en prop, utiliser ces données
-    if (this.user) {
+    
+    // Initialiser le formulaire si l'utilisateur est disponible
+    if (this.user && this.isActive) {
       console.log('Initialisation du formulaire depuis les props');
       this.initializeForm(this.user);
-    } else {
+    } else if (this.isActive) {
       console.log('Pas d\'utilisateur dans les props, tentative de récupération');
       this.fetchUserProfile();
     }
+    
+    // Écouter l'événement de rechargement du profil
+    window.addEventListener('refresh-profile-data', this.fetchUserProfile);
+  },
+  
+  beforeUnmount() {
+    // Nettoyer les écouteurs d'événements
+    window.removeEventListener('refresh-profile-data', this.fetchUserProfile);
   },
   
   watch: {
     // Observer si l'onglet est actif
     isActive(newValue) {
-      if (newValue && this.shouldRefreshData) {
-        // Si on revient sur cet onglet et qu'on a marqué qu'il faut rafraîchir les données
-        this.refreshUserData();
-        this.shouldRefreshData = false; // Réinitialiser le flag après le rafraîchissement
+      if (newValue) {
+        console.log('Onglet profil activé, rechargement des données');
+        this.fetchUserProfile();
       }
     },
     
-    // Observer les changements dans l'utilisateur
+    // Observer les changements dans l'utilisateur fourni par le parent
     user: {
       handler(newUser) {
-        if (newUser && !this.loading) {
+        if (newUser && this.isActive && !this.loading) {
+          console.log('Nouvel utilisateur reçu via props, mise à jour du formulaire');
           this.initializeForm(newUser);
         }
       },
-      immediate: true
+      deep: true
     }
   },
   
   methods: {
-    // Rafraîchir les données utilisateur depuis l'API en utilisant le SDK
-    async refreshUserData() {
-      this.loading = true;
-      
-      try {
-        // Utiliser le SDK pour récupérer les données utilisateur
-        const userData = await this.directusSDK.getUserProfile(['*', 'avatar.*']);
-        
-        if (userData) {
-          console.log('Données fraîches récupérées via SDK:', userData);
-          this.initializeForm(userData);
-        } else {
-          throw new Error('Aucune donnée retournée par le SDK');
-        }
-      } catch (error) {
-        console.error('Erreur lors du rafraîchissement des données via SDK:', error);
-        this.error = "Impossible de charger vos informations. Veuillez réessayer.";
-      } finally {
-        this.loading = false;
-      }
-    },
-    
     // Récupérer le profil utilisateur avec le SDK
     async fetchUserProfile() {
       console.log('ProfileTab: Tentative de récupération du profil utilisateur via SDK');
@@ -431,6 +399,9 @@ export default {
         if (userData) {
           console.log('ProfileTab: Initialisation du formulaire avec les données reçues');
           this.initializeForm(userData);
+          
+          // Émettre un événement pour informer le parent que les données ont été mises à jour
+          this.$emit('user-updated', userData);
         } else {
           console.log('ProfileTab: Aucune donnée utilisateur retournée');
           throw new Error('Aucune donnée utilisateur retournée');
@@ -448,26 +419,20 @@ export default {
     initializeForm(userData) {
       console.log('Initialisation du formulaire avec données:', userData);
       
-      // Déterminer si nous avons un objet Proxy ou un objet régulier
-      const isProxy = typeof userData === 'object' && userData !== null && !Array.isArray(userData) && 'toJSON' in userData;
-      
-      // Si c'est un Proxy, le convertir en objet régulier
-      const data = isProxy ? JSON.parse(JSON.stringify(userData)) : userData;
-      
       // Créer un nouvel objet pour éviter les références
       const formData = {
-        first_name: data.first_name || '',
-        last_name: data.last_name || '',
-        email: data.email || '',
-        avatar: data.avatar || null,
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || '',
+        email: userData.email || '',
+        avatar: userData.avatar || null,
         avatar_file: null,
-        company: data.company || '',
-        phone: data.phone || '',
-        address: data.address || '',
-        contact_instructions: data.contact_instructions || '',
-        hide_email: Boolean(data.hide_email),
-        hide_phone: Boolean(data.hide_phone),
-        hide_address: Boolean(data.hide_address)
+        company: userData.company || '',
+        phone: userData.phone || '',
+        address: userData.address || '',
+        contact_instructions: userData.contact_instructions || '',
+        hide_email: Boolean(userData.hide_email),
+        hide_phone: Boolean(userData.hide_phone),
+        hide_address: Boolean(userData.hide_address)
       };
       
       console.log('Données de formulaire préparées:', formData);
@@ -512,76 +477,73 @@ export default {
     },
     
     // Enregistrer le profil avec le SDK
+    // Méthode saveProfile() complète et corrigée pour ProfileTab.vue
     async saveProfile() {
-      this.saving = true;
+  this.saving = true;
+  
+  try {
+    let avatarId = this.profileForm.avatar;
+    
+    // Si un nouveau fichier est téléchargé, l'uploader
+    if (this.profileForm.avatar_file) {
+      const fileData = await this.directusSDK.uploadFile(this.profileForm.avatar_file, {
+        title: `Avatar - ${this.profileForm.first_name} ${this.profileForm.last_name}`
+      });
       
-      try {
-        let avatarId = this.profileForm.avatar;
-        
-        // Si un nouveau fichier est téléchargé, l'uploader
-        if (this.profileForm.avatar_file) {
-          const fileData = await this.directusSDK.uploadFile(this.profileForm.avatar_file, {
-            title: `Avatar - ${this.profileForm.first_name} ${this.profileForm.last_name}`
-          });
-          
-          // Récupérer l'ID du fichier téléchargé
-          if (fileData && fileData.id) {
-            avatarId = fileData.id;
-          }
-        }
-        
-        // Données à envoyer
-        const userData = {
-          first_name: this.profileForm.first_name,
-          last_name: this.profileForm.last_name,
-          email: this.profileForm.email,
-          avatar: avatarId,
-          company: this.profileForm.company,
-          phone: this.profileForm.phone,
-          address: this.profileForm.address,
-          contact_instructions: this.profileForm.contact_instructions,
-          hide_email: this.profileForm.hide_email,
-          hide_phone: this.profileForm.hide_phone,
-          hide_address: this.profileForm.hide_address
-        };
-        
-        console.log('Mise à jour du profil avec données:', userData);
-        
-        // Mettre à jour le profil avec le SDK
-        const result = await this.directusSDK.updateUserProfile(userData);
-        
-        if (result) {
-          console.log('Profil mis à jour avec succès:', result);
-          
-          // Mettre à jour le formulaire avec les données retournées
-          this.initializeForm(result);
-          
-          // Mettre à jour l'utilisateur dans le store d'authentification
-          if (this.authStore && this.authStore.user) {
-            console.log('Mise à jour du store d\'authentification');
-            this.authStore.user = {
-              ...this.authStore.user,
-              ...result
-            };
-            // Forcer la synchronisation avec le stockage
-            if (this.authStore.syncUserData) {
-              this.authStore.syncUserData();
-            }
-          }
-          
-          // Notification de succès
-          this.$emit('update-success', 'Votre profil a été mis à jour avec succès');
-        } else {
-          console.error('Aucune donnée retournée après la mise à jour');
-          throw new Error('Aucune donnée retournée après la mise à jour');
-        }
-      } catch (error) {
-        console.error('Erreur lors de la sauvegarde du profil:', error);
-        alert('Une erreur est survenue lors de la sauvegarde de votre profil. Veuillez réessayer.');
-      } finally {
-        this.saving = false;
+      // Récupérer l'ID du fichier téléchargé
+      if (fileData && fileData.id) {
+        avatarId = fileData.id;
       }
-    },
+    }
+    
+    // Données à envoyer
+    const userData = {
+      first_name: this.profileForm.first_name,
+      last_name: this.profileForm.last_name,
+      email: this.profileForm.email,
+      avatar: avatarId,
+      company: this.profileForm.company,
+      phone: this.profileForm.phone,
+      address: this.profileForm.address,
+      contact_instructions: this.profileForm.contact_instructions,
+      hide_email: this.profileForm.hide_email,
+      hide_phone: this.profileForm.hide_phone,
+      hide_address: this.profileForm.hide_address
+    };
+    
+    console.log('Mise à jour du profil avec données:', userData);
+    
+    // Mettre à jour le profil avec le SDK
+    const result = await this.directusSDK.updateUserProfile(userData);
+    
+    if (result) {
+      console.log('Profil mis à jour avec succès:', result);
+      
+      // Mettre à jour le formulaire avec les données retournées
+      this.initializeForm(result);
+      
+      // Mettre à jour l'utilisateur dans le store d'authentification
+      if (this.authStore && this.authStore.user) {
+        console.log('Mise à jour du store d\'authentification');
+        this.authStore.setUser(result);
+      }
+      
+      // Notification de succès
+      this.$emit('update-success', 'Votre profil a été mis à jour avec succès');
+      
+      // Déclencher un événement global pour informer les autres composants
+      window.dispatchEvent(new CustomEvent('user-data-updated', { detail: result }));
+    } else {
+      console.error('Aucune donnée retournée après la mise à jour');
+      throw new Error('Aucune donnée retournée après la mise à jour');
+    }
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde du profil:', error);
+    alert('Une erreur est survenue lors de la sauvegarde de votre profil. Veuillez réessayer.');
+  } finally {
+    this.saving = false;
+  }
+},
     
     // Réinitialiser le formulaire aux valeurs d'origine
     resetForm() {

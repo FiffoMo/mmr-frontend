@@ -108,8 +108,7 @@
           Rejoignez les milliers de vendeurs qui ont trouvé leur acheteur sur Ma Maison Rapporte.
         </p>
         <NuxtLink 
-          to="/annonces/ajouter" 
-          class="bg-white text-cyan-500 hover:bg-cyan-50 px-8 py-3 rounded-md text-lg font-medium inline-block transition-colors"
+        to="/dashboard/annonces/createAnnonce" class="bg-white text-cyan-500 hover:bg-cyan-50 px-8 py-3 rounded-md text-lg font-medium inline-block transition-colors"
         >
           Déposer mon annonce
         </NuxtLink>

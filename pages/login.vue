@@ -241,7 +241,7 @@
       <!-- Liens de basculement entre formulaires -->
       <div class="mt-6 text-center">
         <div v-if="isLogin" class="text-sm">
-          <p>Vous n'avez pas encore de compte ?</p>
+          <p class="text-1xl font-extrabold text-gray-900 mb-2">Vous n'avez pas encore de compte&nbsp;?</p>
           <a href="#" @click.prevent="showRegister" class="font-medium text-cyan-600 hover:text-cyan-500">
             Créer un compte
           </a>

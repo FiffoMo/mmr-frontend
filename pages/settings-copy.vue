@@ -65,7 +65,7 @@
         </nav>
       </div>
       
-      <!-- Contenu des tabs - utilisation du v-show pour éviter les remontages mais v-if pour désactiver temporairement -->
+      <!-- Contenu des tabs - utilisation du v-show au lieu de v-if pour éviter les remontages -->
       <div class="bg-white shadow rounded-lg">
         <div v-show="activeTab === 'profile'">
           <ProfileTab 
@@ -76,6 +76,7 @@
           />
         </div>
         
+        <!-- Notifications Tab -->
         <div v-show="activeTab === 'notifications'">
           <NotificationsTab 
             :user="user"
@@ -92,49 +93,54 @@
           />
         </div>
         
-        <div v-show="activeTab === 'favorites'">
+        <!-- Modules désactivés temporairement -->
+        <div v-if="false && activeTab === 'favorites'">
           <FavoritesTab 
-            :user-id="user.id"
-            :is-active="activeTab === 'favorites'"
+            :user-id="user.id" 
           />
         </div>
-        
-        <div v-show="activeTab === 'messages'">
+        <div v-if="false && activeTab === 'listings'">
+          <ListingsTab 
+            :user-id="user.id" 
+          />
+        </div>
+        <div v-if="false && activeTab === 'ads'">
+          <AdsTab 
+            :user-id="user.id" 
+          />
+        </div>
+        <div v-if="false && activeTab === 'messages'">
           <MessagesTab 
             :user-id="user.id" 
-            :is-active="activeTab === 'messages'"
             @messages-read="updateUnreadCount" 
           />
         </div>
-        
-        <!-- Modules désactivés temporairement -->
-        <div v-show="activeTab === 'listings'">
-          <ListingsTab 
-            :user-id="user.id"
-            :is-active="activeTab === 'listings'"
-          />
-        </div>
-        
-        <div v-show="activeTab === 'ads'">
-          <AdsTab 
-            :user-id="user.id"
-            :is-active="activeTab === 'ads'"
-          />
-        </div>
-        
-        <div v-show="activeTab === 'orders'">
+        <div v-if="false && activeTab === 'orders'">
           <OrdersTab 
-            :user-id="user.id"
-            :is-active="activeTab === 'orders'"
+            :user-id="user.id" 
+          />
+        </div>
+        <div v-if="false && activeTab === 'highlight'">
+          <HighlightTab 
+            :user-id="user.id" 
           />
         </div>
         
-        <div v-show="activeTab === 'highlight'">
-          <HighlightTab 
-            :user-id="user.id"
-            :is-active="activeTab === 'highlight'"
-            @update-success="handleUpdateSuccess"
-          />
+        <!-- Message pour les onglets désactivés -->
+        <div v-if="activeTab !== 'profile' && activeTab !== 'notifications'" class="p-8 text-center">
+          <div class="text-yellow-500 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium mb-2">Fonctionnalité en développement</h3>
+          <p class="text-gray-500">Cette section est en cours de développement et sera disponible prochainement.</p>
+          <button 
+            @click="selectTab('profile')" 
+            class="mt-4 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700"
+          >
+            Retourner au profil
+          </button>
         </div>
       </div>
     </div>
@@ -228,11 +234,13 @@ export default {
         { id: 'notifications', name: 'Notifications' },
         { id: 'savedSearches', name: 'Mes alertes' },
         { id: 'favorites', name: 'Favoris' },
+        /* Commenté temporairement pour le développement
         { id: 'messages', name: 'Messagerie' },
         { id: 'orders', name: 'Mes commandes' },
         { id: 'listings', name: 'Mes annonces' },
         { id: 'ads', name: 'Mes publicités' },
         { id: 'highlight', name: 'Mise en avant' }
+        */
       ]
     };
   },
@@ -346,7 +354,6 @@ export default {
     },
     
     // Sélectionner un onglet et mettre à jour l'URL
-    // Sélectionner un onglet et mettre à jour l'URL
     selectTab(tabId) {
       console.log('Changement d\'onglet demandé:', tabId);
       const previousTab = this.activeTab;
@@ -366,35 +373,13 @@ export default {
       url.searchParams.set('tab', tabId);
       window.history.pushState({}, '', url);
       
-      // Déclencher des événements spécifiques selon l'onglet activé
+      // Si on active l'onglet profil, déclencher un événement pour le rafraîchissement des données
       if (tabId === 'profile') {
         window.dispatchEvent(new CustomEvent('refresh-profile-data'));
       }
+      // Si on active l'onglet notifications, déclencher un événement pour le rafraîchissement des préférences
       else if (tabId === 'notifications') {
         window.dispatchEvent(new CustomEvent('refresh-notification-preferences'));
-      }
-      else if (tabId === 'favorites') {
-        window.dispatchEvent(new CustomEvent('refresh-favorites-data'));
-      }
-      else if (tabId === 'highlight') {
-        window.dispatchEvent(new CustomEvent('refresh-highlight-data'));
-      }
-      // Ajouter un événement pour l'onglet Mes commandes
-      else if (tabId === 'orders') {
-        window.dispatchEvent(new CustomEvent('refresh-orders-data'));
-      }
-      // Ajouter des événements pour les autres onglets
-      else if (tabId === 'savedSearches') {
-        window.dispatchEvent(new CustomEvent('refresh-searches-data'));
-      }
-      else if (tabId === 'messages') {
-        window.dispatchEvent(new CustomEvent('refresh-messages-data'));
-      }
-      else if (tabId === 'listings') {
-        window.dispatchEvent(new CustomEvent('refresh-listings-data'));
-      }
-      else if (tabId === 'ads') {
-        window.dispatchEvent(new CustomEvent('refresh-ads-data'));
       }
     },
     

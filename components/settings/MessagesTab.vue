@@ -1,650 +1,547 @@
 <template>
-  <div class="p-6">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4">Messagerie</h2>
-    
-    <!-- Chargement initial -->
-    <div v-if="loading" class="py-10 text-center">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
-      <p class="mt-2 text-gray-500">Chargement des conversations...</p>
-    </div>
-    
-    <!-- Interface de messagerie -->
-    <div v-else class="flex h-[600px] bg-gray-100 rounded-lg overflow-hidden">
-      <!-- Liste des conversations -->
-      <div class="w-1/3 border-r border-gray-200 bg-white">
-        <div class="p-4 border-b border-gray-200">
-          <input 
-            type="text" 
-            placeholder="Rechercher une conversation..." 
-            class="w-full p-2 border border-gray-300 rounded-md"
-            v-model="messageSearch"
-          />
-        </div>
-        
-        <div class="overflow-y-auto h-[calc(100%-60px)]">
-          <div 
-            v-for="conversation in filteredConversations" 
-            :key="conversation.id"
-            :class="[
-              'p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50',
-              activeConversation?.id === conversation.id ? 'bg-cyan-50' : ''
-            ]"
-            @click="selectConversation(conversation)"
-          >
-            <div class="flex justify-between items-center">
-              <h3 class="font-medium">{{ conversation.otherParty }}</h3>
-              <span class="text-xs text-gray-500">{{ formatTime(conversation.lastMessageDate) }}</span>
-            </div>
-            <p class="text-sm text-gray-600 truncate">
-              {{ conversation.lastMessage }}
-            </p>
-            <div class="mt-1 text-xs flex justify-between items-center">
-              <span class="text-gray-500">
-                {{ conversation.relatedTo }}
-              </span>
-              <span v-if="conversation.unread" class="bg-cyan-500 rounded-full w-2 h-2"></span>
-            </div>
+    <div v-if="isActive" class="bg-white shadow sm:rounded-lg p-4 mb-4">
+      <!-- En-tête -->
+      <div class="pb-5 border-b border-gray-200">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">
+          Messagerie
+        </h3>
+        <p class="mt-2 max-w-4xl text-sm text-gray-500">
+          Consultez et répondez aux messages des personnes intéressées par vos annonces.
+        </p>
+      </div>
+  
+      <!-- Affichage du loader pendant le chargement -->
+      <div v-if="loading && !error" class="py-12 flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
+        <p class="mt-4 text-sm text-gray-500">Chargement de vos conversations...</p>
+      </div>
+  
+      <!-- Affichage en cas d'erreur -->
+      <div v-else-if="error" class="bg-red-50 border-l-4 border-red-400 p-4 my-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
           </div>
-          
-          <!-- Aucune conversation -->
-          <div v-if="conversations.length === 0" class="p-4 text-center text-gray-500">
-            Vous n'avez pas de conversations actives
+          <div class="ml-3">
+            <p class="text-sm text-red-700">
+              {{ errorMessage || "Une erreur est survenue lors du chargement de vos conversations." }}
+            </p>
+            <p class="mt-2 text-sm text-red-700">
+              <button @click="fetchConversations" class="font-medium underline text-red-700 hover:text-red-600">
+                Réessayer
+              </button>
+            </p>
           </div>
         </div>
       </div>
-      
-      <!-- Zone de message -->
-      <div class="w-2/3 flex flex-col">
-        <div v-if="!activeConversation" class="flex-grow flex items-center justify-center">
-          <p class="text-gray-500">Sélectionnez une conversation pour commencer</p>
+  
+      <!-- Aucune conversation -->
+      <div v-else-if="!loading && conversations.length === 0" class="bg-gray-50 rounded-lg p-8 my-6 text-center">
+        <div class="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-6">
+          <svg class="h-8 w-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
         </div>
-        
-        <template v-else>
-          <!-- En-tête de la conversation -->
-          <div class="p-4 border-b border-gray-200 bg-white">
-            <div class="flex justify-between items-center">
-              <div>
-                <h3 class="font-medium">{{ activeConversation.otherParty }}</h3>
-                <p class="text-sm text-gray-500">
-                  {{ activeConversation.relatedTo }}
-                  <a 
-                    v-if="activeConversation.relatedToId" 
-                    :href="`/annonces/detail-${activeConversation.relatedToId}`"
-                    class="ml-1 text-cyan-600 hover:text-cyan-900 hover:underline"
-                  >
-                    (voir l'annonce)
-                  </a>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun message</h3>
+        <p class="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+          Vous n'avez aucune conversation active pour le moment. Les messages des personnes intéressées par vos annonces apparaîtront ici.
+        </p>
+        <NuxtLink to="/annonces" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
+          <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+          Consulter les annonces
+        </NuxtLink>
+      </div>
+  
+      <!-- Liste des conversations -->
+      <div v-else-if="conversations.length > 0" class="mt-6">
+        <ul class="divide-y divide-gray-200 border border-gray-200 rounded-md overflow-hidden">
+          <li v-for="conversation in conversations" :key="conversation.id" class="px-4 py-4 hover:bg-gray-50">
+            <div class="flex items-center space-x-4">
+              <div class="flex-shrink-0">
+                <div class="h-10 w-10 rounded-full bg-cyan-600 flex items-center justify-center text-white font-medium">
+                  {{ getInitials(conversation.nom_contact || 'Anonyme') }}
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900 truncate">
+                  {{ conversation.nom_contact || 'Anonyme' }}
+                </p>
+                <p class="text-sm text-gray-500 truncate">
+                  {{ conversation.annonce ? 'Re: ' + conversation.annonce.titre : 'Sans titre' }}
+                </p>
+                <p class="text-xs text-gray-400">
+                  {{ formatDate(conversation.dernier_message || conversation.date_created) }}
                 </p>
               </div>
-              <button 
-                @click="showActionsMenu = !showActionsMenu" 
-                class="text-gray-500 hover:text-gray-700 relative"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+              <div>
+                <button 
+                  @click="openConversation(conversation)" 
+                  class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-cyan-700 bg-cyan-100 hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+                >
+                  Voir
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+  
+      <!-- Modal de conversation -->
+      <div v-if="activeConversation" class="fixed inset-0 z-10 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="closeConversation"></div>
+  
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+  
+          <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <!-- En-tête de la modal -->
+            <div class="bg-cyan-700 px-4 py-3 sm:px-6 flex items-center justify-between">
+              <h3 class="text-lg leading-6 font-medium text-white" id="modal-title">
+                Conversation avec {{ activeConversation.nom_contact || 'Anonyme' }}
+              </h3>
+              <button @click="closeConversation" class="text-white hover:text-gray-200">
+                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                
-                <!-- Menu déroulant -->
-                <div 
-                  v-if="showActionsMenu" 
-                  class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10"
-                >
-                  <div class="py-1">
-                    <a 
-                      href="#" 
-                      class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                      @click.prevent="archiveConversation"
-                    >
-                      Archiver la conversation
-                    </a>
-                    <a 
-                      href="#" 
-                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      @click.prevent="reportConversation"
-                    >
-                      Signaler un problème
-                    </a>
-                  </div>
-                </div>
               </button>
             </div>
-          </div>
-          
-          <!-- Messages -->
-          <div ref="messagesContainer" class="flex-grow p-4 overflow-y-auto bg-gray-50">
-            <!-- Indicateur de chargement des messages -->
-            <div v-if="loadingMessages" class="flex justify-center py-4">
-              <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500"></div>
-            </div>
-            
-            <div v-else>
-              <!-- Date des messages -->
-              <div v-for="(group, date) in groupedMessages" :key="date">
-                <div class="text-center my-4">
-                  <span class="inline-block px-2 py-1 text-xs bg-gray-200 rounded-full text-gray-600">
-                    {{ formatMessageDate(date) }}
-                  </span>
-                </div>
-                
-                <div 
-                  v-for="(message, index) in group" 
-                  :key="index"
+  
+            <div class="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <!-- Informations sur l'annonce si disponible -->
+              <div v-if="activeConversation.annonce" class="bg-gray-50 rounded-md p-3 mb-4">
+                <p class="text-sm font-medium text-gray-700">Concernant votre annonce</p>
+                <p class="text-sm text-gray-900">
+                  {{ activeConversation.annonce.titre }}
+                </p>
+              </div>
+  
+              <!-- Messages -->
+              <div class="space-y-4 max-h-80 overflow-y-auto mb-4 p-2">
+                <div v-for="message in conversationMessages" :key="message.id" 
                   :class="[
-                    'mb-4 max-w-xs rounded-lg p-3',
-                    message.sender === 'me' 
-                      ? 'ml-auto bg-cyan-500 text-white' 
-                      : 'mr-auto bg-white border border-gray-200'
-                  ]"
-                >
-                  <p>{{ message.content }}</p>
-                  <p class="text-xs mt-1" :class="message.sender === 'me' ? 'text-cyan-100' : 'text-gray-500'">
-                    {{ formatMessageTime(message.timestamp) }}
-                  </p>
+                    'p-3 rounded-lg max-w-3/4',
+                    isMessageFromCurrentUser(message) ? 'ml-auto bg-cyan-100 text-cyan-800' : 'bg-gray-100 text-gray-800'
+                  ]">
+                  <div class="text-sm">{{ message.contenu }}</div>
+                  <div class="text-xs mt-1 text-gray-500">{{ formatDate(message.date_created) }}</div>
+                </div>
+                
+                <div v-if="conversationMessages.length === 0" class="text-center py-6 text-gray-500">
+                  Aucun message dans cette conversation
                 </div>
               </div>
-              
-              <!-- Indicateur de lecture -->
-              <div v-if="activeConversation.lastReadByOther" class="text-xs text-right text-gray-500 mt-2">
-                Vu {{ formatTime(activeConversation.lastReadByOther) }}
-              </div>
+  
+              <!-- Formulaire de réponse -->
+              <form @submit.prevent="sendMessage">
+                <div>
+                  <label for="message" class="block text-sm font-medium text-gray-700">Votre réponse</label>
+                  <textarea
+                    id="message"
+                    v-model="newMessage"
+                    rows="3"
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                    placeholder="Écrivez votre message ici..."
+                  ></textarea>
+                </div>
+                <div class="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    class="mr-2 inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+                    @click="closeConversation"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    :disabled="!newMessage.trim() || sendingMessage"
+                    class="inline-flex justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 disabled:opacity-50"
+                  >
+                    <svg v-if="sendingMessage" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Envoyer
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-          
-          <!-- Zone de saisie -->
-          <div class="p-3 border-t border-gray-200 bg-white">
-            <form @submit.prevent="sendMessage" class="flex space-x-2">
-              <input 
-                type="text" 
-                v-model="newMessage" 
-                placeholder="Tapez votre message..." 
-                class="flex-grow p-2 border border-gray-300 rounded-md"
-              />
-              <button 
-                type="submit" 
-                class="px-4 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-700"
-                :disabled="!newMessage.trim() || sendingMessage"
-              >
-                <span v-if="sendingMessage">
-                  <svg class="animate-spin h-4 w-4 text-white inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </span>
-                <span>Envoyer</span>
-              </button>
-            </form>
-          </div>
-        </template>
+        </div>
       </div>
     </div>
-  </div>
-</template>
+  </template>
+  
+  <script>
+  export default {
+    props: {
+      isActive: {
+        type: Boolean,
+        default: false
+      }
+    },
+  
+    data() {
+      return {
+        loading: false,
+        error: false,
+        errorMessage: '',
+        dataRequested: false,
+        conversations: [],
+        activeConversation: null,
+        conversationMessages: [],
+        newMessage: '',
+        sendingMessage: false,
+        currentUserId: null
+      }
+    },
+  
+    watch: {
+      isActive(newVal) {
+        if (newVal && !this.dataRequested) {
+          this.fetchConversations();
+          this.dataRequested = true;
+        }
+      }
+    },
+  
+    mounted() {
+      // Récupérer l'ID de l'utilisateur courant dès le montage du composant
+      const authStore = useAuthStore();
+      this.currentUserId = authStore.user?.id;
+      
+      if (this.isActive && !this.dataRequested) {
+        this.fetchConversations();
+        this.dataRequested = true;
+      }
+    },
+  
+    methods: {
+      async fetchConversations() {
+        this.loading = true;
+        this.error = false;
+        this.errorMessage = '';
+        
+        // Timeout pour éviter un chargement infini
+        const timeout = setTimeout(() => {
+          if (this.loading) {
+            this.loading = false;
+            this.conversations = [];
+            console.log('Timeout atteint lors du chargement des conversations');
+          }
+        }, 5000);
 
-<script>
-export default {
-  name: 'MessagesTab',
-  
-  props: {
-    userId: {
-      type: String,
-      required: true
-    }
-  },
-  
-  emits: ['messages-read'],
-  
-  data() {
-    return {
-      // États de chargement
-      loading: false,
-      loadingMessages: false,
-      sendingMessage: false,
-      
-      // Données de messagerie
-      conversations: [],
-      activeConversation: null,
-      
-      // Filtrage
-      messageSearch: '',
-      
-      // UI
-      showActionsMenu: false,
-      
-      // Nouveau message
-      newMessage: ''
-    };
-  },
-  
-  computed: {
-    // Filtre les conversations pour la recherche
-    filteredConversations() {
-      if (!this.messageSearch) return this.conversations;
-      
-      const search = this.messageSearch.toLowerCase();
-      return this.conversations.filter(conv => 
-        (conv.otherParty || '').toLowerCase().includes(search) || 
-        (conv.relatedTo || '').toLowerCase().includes(search) ||
-        (conv.lastMessage || '').toLowerCase().includes(search)
-      );
-    },
-    
-    // Regroupe les messages par date
-    groupedMessages() {
-      if (!this.activeConversation || !this.activeConversation.messages) {
-        return {};
-      }
-      
-      return this.activeConversation.messages.reduce((groups, message) => {
-        const date = new Date(message.timestamp).toLocaleDateString('fr-FR');
-        if (!groups[date]) {
-          groups[date] = [];
-        }
-        groups[date].push(message);
-        return groups;
-      }, {});
-    }
-  },
-  
-  created() {
-    // Charger les conversations au montage du composant
-    this.fetchConversations();
-    
-    // Vérifier si une conversation spécifique est demandée dans l'URL
-    const params = new URLSearchParams(window.location.search);
-    const conversationId = params.get('conversation');
-    if (conversationId) {
-      this.loadSpecificConversation(conversationId);
-    }
-  },
-  
-  methods: {
-    // Récupération des conversations
-    async fetchConversations() {
-      this.loading = true;
-      
-      try {
-        // Appel à l'API Directus via notre proxy pour récupérer les conversations
-        // où l'utilisateur est soit l'expéditeur soit le destinataire
-        const response = await fetch(`/api/directus/items/conversations?filter[user_created][_eq]=${this.userId}&fields=*,annonce.*&sort=-date_updated`);
-        
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data && data.data) {
-          // Transformer les données pour correspondre à notre modèle
-          const conversationsPromises = data.data.map(async (conv) => {
-            // Récupérer les derniers messages de cette conversation
-            const messagesResponse = await fetch(`/api/directus/items/messages?filter[conversation_id][_eq]=${conv.id}&sort=-date_created&limit=1&fields=*,expediteur.*,destinataire.*`);
+        try {
+          if (!this.currentUserId) {
+            const authStore = useAuthStore();
+            this.currentUserId = authStore.user?.id;
             
-            if (!messagesResponse.ok) {
-              throw new Error(`Erreur API: ${messagesResponse.status}`);
+            if (!this.currentUserId) {
+              throw new Error('Utilisateur non connecté');
             }
+          }
+
+          // Utilisation du SDK Directus avec les bonnes méthodes
+          const directusSDK = useDirectusSDK();
+          
+          try {
+            // Utiliser la méthode getUserConversations du SDK
+            const conversations = await directusSDK.getUserConversations();
             
-            const messagesData = await messagesResponse.json();
-            const lastMessage = messagesData.data && messagesData.data.length > 0 ? messagesData.data[0] : null;
+            console.log('Conversations récupérées:', conversations);
+            this.conversations = conversations || [];
             
-            // Déterminer l'autre partie (expéditeur ou destinataire)
-            let otherParty = "Utilisateur inconnu";
-            let unread = false;
-            
-            if (lastMessage) {
-              if (lastMessage.expediteur && lastMessage.expediteur.id !== this.userId) {
-                otherParty = `${lastMessage.expediteur.first_name || ''} ${lastMessage.expediteur.last_name || ''}`.trim();
-                unread = !lastMessage.lu;
-              } else if (lastMessage.destinataire && lastMessage.destinataire.id !== this.userId) {
-                otherParty = `${lastMessage.destinataire.first_name || ''} ${lastMessage.destinataire.last_name || ''}`.trim();
+            // Si aucune conversation trouvée, essayer avec une requête personnalisée
+            if (this.conversations.length === 0) {
+              try {
+                // Récupérer d'abord le profil utilisateur pour obtenir l'ID
+                const user = await directusSDK.getUserProfile(['id']);
+                
+                if (!user || !user.id) {
+                  throw new Error('Impossible de récupérer l\'ID utilisateur');
+                }
+                
+                // Utiliser client_id au lieu de user_proprietaire
+                const customConversations = await directusSDK.getItems('conversations', {
+                  filter: { client_id: { _eq: user.id } },
+                  fields: '*,annonce.*',
+                  sort: '-date_updated'
+                });
+                
+                console.log('Conversations récupérées via client_id:', customConversations);
+                this.conversations = customConversations || [];
+              } catch (secondError) {
+                console.error('Erreur lors de la récupération avec client_id:', secondError);
+                // Continuer avec un tableau vide si l'erreur persiste
               }
             }
+          } catch (error) {
+            console.error('Erreur lors de la récupération des conversations:', error);
             
-            return {
-              id: conv.id,
-              otherParty: otherParty,
-              lastMessage: lastMessage ? lastMessage.contenu : 'Nouvelle conversation',
-              lastMessageDate: lastMessage ? new Date(lastMessage.date_created) : new Date(conv.date_created),
-              lastReadByOther: lastMessage && lastMessage.date_lecture ? new Date(lastMessage.date_lecture) : null,
-              unread: unread,
-              relatedTo: conv.titre || (conv.annonce ? conv.annonce.titre : 'Discussion générale'),
-              relatedToId: conv.annonce ? conv.annonce.id : null,
-              messages: []
-            };
-          });
-          
-          this.conversations = await Promise.all(conversationsPromises);
-          
-          // Mettre à jour le nombre de messages non lus
-          const unreadCount = this.conversations.filter(conv => conv.unread).length;
-          this.$emit('messages-read', unreadCount);
-        } else {
+            // Dernière tentative avec fetch direct
+            try {
+              // Utiliser client_id dans la requête directe
+              const userId = this.currentUserId;
+              const response = await fetch(`/api/directus/items/conversations?filter[client_id][_eq]=${userId}&fields=id,titre,nom_contact,email_contact,dernier_message,date_created,date_updated,annonce.id,annonce.titre`);
+              
+              if (response.ok) {
+                const data = await response.json();
+                console.log('Conversations récupérées via fetch direct:', data);
+                this.conversations = data.data || [];
+              } else {
+                throw new Error('Impossible de récupérer vos conversations');
+              }
+            } catch (fetchError) {
+              console.error('Erreur lors de la récupération directe des conversations:', fetchError);
+              throw new Error('Impossible de récupérer vos conversations');
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des conversations:', error);
+          this.error = true;
+          this.errorMessage = error.message || 'Impossible de charger vos conversations';
           this.conversations = [];
+        } finally {
+          clearTimeout(timeout);
+          this.loading = false;
         }
-      } catch (error) {
-        console.error('Erreur lors du chargement des conversations:', error);
-        this.conversations = [];
-      } finally {
-        this.loading = false;
-      }
-    },
-    
-    // Charger une conversation spécifique
-    async loadSpecificConversation(id) {
-      try {
-        // Attendre que les conversations soient chargées
-        if (this.loading) {
-          await new Promise(resolve => {
-            const checkLoading = setInterval(() => {
-              if (!this.loading) {
-                clearInterval(checkLoading);
-                resolve();
-              }
-            }, 100);
+      }, 
+  
+      async openConversation(conversation) {
+        this.activeConversation = conversation;
+        this.conversationMessages = [];
+        this.fetchConversationMessages(conversation.id);
+      },
+  
+      closeConversation() {
+        this.activeConversation = null;
+        this.conversationMessages = [];
+        this.newMessage = '';
+      },
+  
+      async fetchConversationMessages(conversationId) {
+        try {
+          const directusSDK = useDirectusSDK();
+          
+          // Utiliser la méthode getItems pour récupérer les messages
+          const messages = await directusSDK.getItems('messages', {
+            filter: { conversation_id: { _eq: conversationId } },
+            fields: 'id,contenu,date_created,expediteur,destinataire',
+            sort: 'date_created'
           });
+          
+          console.log('Messages récupérés:', messages);
+          this.conversationMessages = messages || [];
+        } catch (error) {
+          console.error('Erreur lors du chargement des messages:', error);
+          
+          // Méthode alternative en cas d'échec
+          try {
+            const response = await fetch(`/api/directus/items/messages?filter[conversation_id][_eq]=${conversationId}&fields=id,contenu,date_created,expediteur,destinataire&sort=date_created`);
+            
+            if (!response.ok) {
+              throw new Error('Impossible de charger les messages');
+            }
+            
+            const data = await response.json();
+            console.log('Messages récupérés via fetch direct:', data);
+            this.conversationMessages = data.data || [];
+          } catch (fetchError) {
+            console.error('Erreur lors de la récupération directe des messages:', fetchError);
+            
+            // Afficher un message d'erreur si vous avez un système de notification
+            if (this.$toast) {
+              this.$toast.error('Impossible de charger les messages');
+            }
+            
+            this.conversationMessages = [];
+          }
         }
+      },
+  
+      async sendMessage() {
+        if (!this.newMessage.trim() || !this.activeConversation) return;
         
-        // Trouver la conversation
-        const conversation = this.conversations.find(c => c.id === parseInt(id) || c.id === id);
-        if (conversation) {
-          this.selectConversation(conversation);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement de la conversation spécifique:', error);
-      }
-    },
-    
-    // Sélectionner une conversation
-    async selectConversation(conversation) {
-      // Ne rien faire si c'est déjà la conversation active
-      if (this.activeConversation && this.activeConversation.id === conversation.id) {
-        return;
-      }
-      
-      this.activeConversation = conversation;
-      this.showActionsMenu = false;
-      
-      // Charger les messages
-      await this.fetchMessages(conversation.id);
-      
-      // Marquer comme lu si nécessaire
-      if (conversation.unread) {
-        await this.markConversationAsRead(conversation.id);
-        conversation.unread = false;
+        this.sendingMessage = true;
         
-        // Mettre à jour le nombre de messages non lus
-        const unreadCount = this.conversations.filter(conv => conv.unread).length;
-        this.$emit('messages-read', unreadCount);
-      }
-      
-      // Faire défiler vers le bas pour voir les derniers messages
-      this.$nextTick(() => {
-        if (this.$refs.messagesContainer) {
-          this.$refs.messagesContainer.scrollTop = this.$refs.messagesContainer.scrollHeight;
-        }
-      });
-    },
-    
-    // Marquer une conversation comme lue
-    async markConversationAsRead(conversationId) {
-      try {
-        // Récupérer tous les messages non lus adressés à l'utilisateur
-        const response = await fetch(`/api/directus/items/messages?filter[conversation_id][_eq]=${conversationId}&filter[destinataire][_eq]=${this.userId}&filter[lu][_eq]=false&fields=id`);
-        
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data && data.data && data.data.length > 0) {
-          // Marquer chaque message comme lu
-          const updatePromises = data.data.map(message => 
-            fetch(`/api/directus/items/messages/${message.id}`, {
-              method: 'PATCH',
+        try {
+          if (!this.currentUserId) {
+            const authStore = useAuthStore();
+            this.currentUserId = authStore.user?.id;
+            
+            if (!this.currentUserId) {
+              throw new Error('Utilisateur non connecté');
+            }
+          }
+          
+          const directusSDK = useDirectusSDK();
+          
+          // Déterminer le destinataire (contact externe)
+          // Dans ce cas, le destinataire pourrait être null car on envoie à un contact externe
+          // qui n'a pas de compte utilisateur
+          const destinataire = null;
+          
+          const messageData = {
+            conversation_id: this.activeConversation.id,  // Utiliser conversation_id
+            contenu: this.newMessage.trim(),
+            expediteur: this.currentUserId,  // L'utilisateur courant est l'expéditeur
+            destinataire: destinataire,
+            type: 'interne'  // Type de message interne
+          };
+          
+          console.log('Envoi du message:', messageData);
+          
+          // Utiliser la méthode createItem du SDK
+          const createdMessage = await directusSDK.createItem('messages', messageData);
+          console.log('Message envoyé avec succès:', createdMessage);
+          
+          // Essayer de mettre à jour dernier_message dans la conversation
+          try {
+            await directusSDK.updateItem('conversations', this.activeConversation.id, {
+              dernier_message: new Date().toISOString()
+            });
+            console.log('Date de dernier message mise à jour');
+          } catch (updateError) {
+            console.warn('Erreur lors de la mise à jour de dernier_message:', updateError);
+            // Continuer même si cette mise à jour échoue
+          }
+          
+          // Vider le champ du message
+          this.newMessage = '';
+          
+          // Rafraîchir les messages
+          this.fetchConversationMessages(this.activeConversation.id);
+          
+          // Rafraîchir la liste des conversations
+          this.fetchConversations();
+          
+          // Afficher une notification de succès si disponible
+          if (this.$toast) {
+            this.$toast.success('Message envoyé avec succès');
+          }
+        } catch (error) {
+          console.error('Erreur lors de l\'envoi du message:', error);
+          
+          // Méthode alternative en cas d'échec du SDK
+          try {
+            const response = await fetch('/api/directus/items/messages', {
+              method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                lu: true,
-                date_lecture: new Date().toISOString()
+                conversation_id: this.activeConversation.id,
+                contenu: this.newMessage.trim(),
+                expediteur: this.currentUserId,
+                destinataire: null,
+                type: 'interne'
               })
-            })
-          );
-          
-          await Promise.all(updatePromises);
-        }
-      } catch (error) {
-        console.error('Erreur lors du marquage des messages comme lus:', error);
-      }
-    },
-    
-    // Récupération des messages d'une conversation
-    async fetchMessages(conversationId) {
-      this.loadingMessages = true;
-      
-      try {
-        const response = await fetch(`/api/directus/items/messages?filter[conversation_id][_eq]=${conversationId}&fields=*,expediteur.*,destinataire.*&sort=date_created`);
-        
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data && data.data) {
-          // Transformer les messages au format attendu
-          this.activeConversation.messages = data.data.map(msg => ({
-            sender: msg.expediteur.id === this.userId ? 'me' : 'other',
-            content: msg.contenu,
-            timestamp: new Date(msg.date_created)
-          }));
-        } else {
-          this.activeConversation.messages = [];
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des messages:', error);
-        this.activeConversation.messages = [];
-      } finally {
-        this.loadingMessages = false;
-      }
-    },
-    
-    // Envoyer un message
-    async sendMessage() {
-      if (!this.newMessage.trim() || !this.activeConversation || this.sendingMessage) {
-        return;
-      }
-      
-      this.sendingMessage = true;
-      
-      try {
-        // Déterminer le destinataire (celui qui n'est pas l'utilisateur actuel)
-        // Pour cela, nous devons d'abord récupérer un message existant
-        let destinataireId = null;
-        
-        if (this.activeConversation.messages.length > 0) {
-          // Récupérer le premier message pour déterminer expéditeur/destinataire
-          const firstMessageResponse = await fetch(`/api/directus/items/messages?filter[conversation_id][_eq]=${this.activeConversation.id}&limit=1&fields=expediteur.*,destinataire.*`);
-          
-          if (firstMessageResponse.ok) {
-            const firstMessageData = await firstMessageResponse.json();
-            if (firstMessageData.data && firstMessageData.data.length > 0) {
-              const firstMessage = firstMessageData.data[0];
-              if (firstMessage.expediteur.id === this.userId) {
-                destinataireId = firstMessage.destinataire.id;
-              } else {
-                destinataireId = firstMessage.expediteur.id;
-              }
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(`Erreur API: ${errorData?.errors?.[0]?.message || response.statusText}`);
+            }
+            
+            console.log('Message envoyé via fetch direct');
+            
+            // Mettre à jour la conversation via fetch également
+            try {
+              await fetch(`/api/directus/items/conversations/${this.activeConversation.id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  dernier_message: new Date().toISOString()
+                })
+              });
+            } catch (updateError) {
+              // Ignorer cette erreur
+            }
+            
+            // Vider le champ du message
+            this.newMessage = '';
+            
+            // Rafraîchir les données
+            this.fetchConversationMessages(this.activeConversation.id);
+            this.fetchConversations();
+            
+            if (this.$toast) {
+              this.$toast.success('Message envoyé avec succès');
+            }
+          } catch (fetchError) {
+            console.error('Erreur lors de l\'envoi du message via fetch:', fetchError);
+            
+            // Afficher une notification d'erreur
+            if (this.$toast) {
+              this.$toast.error(fetchError.message || 'Impossible d\'envoyer le message');
             }
           }
-        } else {
-          // Si c'est une nouvelle conversation, nous devons trouver l'autre utilisateur
-          // Dans un cas réel, vous auriez besoin de l'ID du destinataire
-          destinataireId = "USER_ID_TO_REPLACE"; // À remplacer par l'ID réel
+        } finally {
+          this.sendingMessage = false;
+        }
+      },
+  
+      isMessageFromCurrentUser(message) {
+        return message.expediteur === this.currentUserId;
+      },
+  
+      getInitials(name) {
+        if (!name) return '?';
+        return name
+          .split(' ')
+          .map(part => part.charAt(0).toUpperCase())
+          .slice(0, 2)
+          .join('');
+      },
+  
+      formatDate(dateString) {
+        if (!dateString) return '';
+        
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        // Si moins de 24h
+        if (diffDays < 1) {
+          return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         }
         
-        if (!destinataireId) {
-          throw new Error("Impossible de déterminer le destinataire");
+        // Si aujourd'hui
+        if (
+          date.getDate() === now.getDate() &&
+          date.getMonth() === now.getMonth() &&
+          date.getFullYear() === now.getFullYear()
+        ) {
+          return `Aujourd'hui à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
         }
         
-        // Créer le message dans Directus
-        const messageData = {
-          conversation_id: this.activeConversation.id,
-          expediteur: this.userId,
-          destinataire: destinataireId,
-          contenu: this.newMessage,
-          lu: false,
-        };
-        
-        const response = await fetch('/api/directus/items/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(messageData)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
+        // Si hier
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        if (
+          date.getDate() === yesterday.getDate() &&
+          date.getMonth() === yesterday.getMonth() &&
+          date.getFullYear() === yesterday.getFullYear()
+        ) {
+          return `Hier à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
         }
         
-        const data = await response.json();
+        // Si moins d'une semaine
+        if (diffDays < 7) {
+          const options = { weekday: 'long', hour: '2-digit', minute: '2-digit' };
+          return date.toLocaleDateString('fr-FR', options);
+        }
         
-        // Mettre à jour la conversation
-        await fetch(`/api/directus/items/conversations/${this.activeConversation.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            dernier_message: new Date().toISOString()
-          })
-        });
-        
-        // Ajouter le message à la conversation active
-        this.activeConversation.messages.push({
-          sender: 'me',
-          content: this.newMessage,
-          timestamp: new Date()
-        });
-        
-        // Mise à jour du dernier message
-        this.activeConversation.lastMessage = this.newMessage;
-        this.activeConversation.lastMessageDate = new Date();
-        
-        // Réinitialiser le champ de saisie
-        this.newMessage = '';
-        
-        // Faire défiler vers le bas pour voir le nouveau message
-        this.$nextTick(() => {
-          if (this.$refs.messagesContainer) {
-            this.$refs.messagesContainer.scrollTop = this.$refs.messagesContainer.scrollHeight;
-          }
-        });
-      } catch (error) {
-        console.error('Erreur lors de l\'envoi du message:', error);
-        alert('Une erreur est survenue lors de l\'envoi du message');
-      } finally {
-        this.sendingMessage = false;
+        // Sinon format complet
+        const options = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+        return date.toLocaleDateString('fr-FR', options);
       }
-    },
-    
-    // Archiver une conversation
-    async archiveConversation() {
-      if (!this.activeConversation) return;
-      
-      if (!confirm('Êtes-vous sûr de vouloir archiver cette conversation ?')) {
-        this.showActionsMenu = false;
-        return;
-      }
-      
-      try {
-        await fetch(`/api/directus/items/conversations/${this.activeConversation.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            status: 'archived'
-          })
-        });
-        
-        // Mettre à jour l'affichage local
-        this.conversations = this.conversations.filter(c => c.id !== this.activeConversation.id);
-        this.activeConversation = null;
-        this.showActionsMenu = false;
-        
-        alert('Conversation archivée avec succès');
-      } catch (error) {
-        console.error('Erreur lors de l\'archivage de la conversation:', error);
-        alert('Une erreur est survenue lors de l\'archivage de la conversation');
-      }
-    },
-    
-    // Signaler un problème avec une conversation
-    reportConversation() {
-      if (!this.activeConversation) return;
-      
-      // Dans un cas réel, on ouvrirait un modal ou redirigerait vers un formulaire
-      alert('Fonctionnalité de signalement à implémenter');
-      this.showActionsMenu = false;
-    },
-    
-    // Formater l'heure d'un message
-    formatMessageTime(date) {
-      return new Intl.DateTimeFormat('fr-FR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(new Date(date));
-    },
-    
-    // Formater la date d'un groupe de messages
-    formatMessageDate(dateStr) {
-      const date = new Date(dateStr);
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      
-      if (date.toDateString() === today.toDateString()) {
-        return 'Aujourd\'hui';
-      } else if (date.toDateString() === yesterday.toDateString()) {
-        return 'Hier';
-      } else {
-        return new Intl.DateTimeFormat('fr-FR', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        }).format(date);
-      }
-    },
-    
-    // Formater l'heure pour l'affichage dans la liste des conversations
-    formatTime(date) {
-      const now = new Date();
-      const messageDate = new Date(date);
-      const diff = now - messageDate;
-      
-      // Si c'est aujourd'hui, montrer l'heure
-      if (messageDate.toDateString() === now.toDateString()) {
-        return new Intl.DateTimeFormat('fr-FR', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        }).format(messageDate);
-      }
-      
-      // Si c'est cette semaine, montrer le jour
-      if (diff < 7 * 24 * 60 * 60 * 1000) {
-        return new Intl.DateTimeFormat('fr-FR', { 
-          weekday: 'short' 
-        }).format(messageDate);
-      }
-      
-      // Sinon montrer la date complète
-      return new Intl.DateTimeFormat('fr-FR', { 
-        day: '2-digit', 
-        month: '2-digit'
-      }).format(messageDate);
     }
   }
-};
-</script>
+  </script>

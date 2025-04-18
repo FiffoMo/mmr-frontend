@@ -1,498 +1,487 @@
-<!-- page Mes alertes -->
-
 <template>
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-gray-900">Mes alertes</h2>
-      <button 
-        type="button"
-        class="px-3 py-1.5 bg-cyan-500 text-white text-sm rounded-md hover:bg-cyan-700"
-        @click="toggleNotificationsForAll"
-        :disabled="loadingAction"
-      >
-        {{ allNotificationsEnabled ? 'Désactiver toutes les alertes' : 'Activer toutes les alertes' }}
-      </button>
-    </div>
-    
-    <!-- Chargement -->
-    <div v-if="loading" class="py-10 text-center">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
-      <p class="mt-2 text-gray-500">Chargement de vos alertes...</p>
-    </div>
-    
-    <!-- Aucune alerte -->
-    <div v-else-if="savedSearches.length === 0" class="bg-gray-100 p-8 rounded-lg text-center">
-      <p class="text-gray-500">Vous n'avez pas encore configuré d'alertes immobilières.</p>
-      <a href="/annonces" class="mt-2 inline-block text-cyan-600 hover:text-cyan-900 hover:underline">
-        Parcourir les annonces
-      </a>
-    </div>
-    
-    <!-- Liste des alertes -->
-    <div v-else class="space-y-4">
-      <div v-for="(search, index) in savedSearches" :key="search.id" class="bg-gray-100 p-4 rounded-lg">
-        <div class="flex justify-between items-start">
-          <div>
-            <h3 class="font-medium">{{ search.name || 'Alerte ' + (index + 1) }}</h3>
-            <p class="text-sm text-gray-600 mt-1">
-              {{ formatSearchCriteria(search) }}
+    <div class="tab-content">
+      <!-- État de chargement -->
+      <div v-if="loading && !error" class="py-10 text-center">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+        <p class="mt-2 text-gray-500">Chargement de vos alertes...</p>
+      </div>
+  
+      <!-- État d'erreur -->
+      <div v-else-if="error" class="bg-red-50 p-6 rounded-lg mb-6">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <svg class="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Une erreur est survenue</h3>
+            <p class="mt-2 text-sm text-red-700">
+              {{ errorMessage || "Impossible de charger vos alertes. Veuillez réessayer ultérieurement." }}
             </p>
-            <div class="mt-2 flex space-x-2 text-sm">
-              <span class="text-cyan-600 hover:text-cyan-900 hover:underline cursor-pointer" @click="editSearch(search)">
-                Modifier
-              </span>
-              <span class="text-red-600 hover:text-red-900 hover:underline cursor-pointer" @click="deleteSearch(search.id)">
-                Supprimer
-              </span>
-              <a 
-                :href="generateSearchUrl(search)" 
-                class="text-cyan-600 hover:text-cyan-900 hover:underline"
-              >
-                Voir les résultats
-              </a>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Pas de données -->
+      <div v-else-if="!loading && searches.length === 0" class="bg-gray-100 p-8 rounded-lg text-center">
+        <div class="text-gray-400 mb-4">
+          <div class="bell-icon-container inline-flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16">
+              <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/>
+            </svg>
+          </div>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900">Aucune alerte</h3>
+        <p class="mt-2 text-gray-500 mb-6">
+          Vous n'avez pas encore configuré d'alertes immobilières.
+          Les alertes vous permettent d'être notifié dès qu'un bien correspondant à vos critères est mis en ligne.
+        </p>
+        <p class="text-gray-500 mb-6">
+          Pour créer une alerte, consultez nos annonces et cliquez sur l'icône de cloche qui apparaît sur chaque annonce.
+        </p>
+        <div class="mt-6">
+          <NuxtLink to="/annonces" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
+            Voir les annonces
+          </NuxtLink>
+        </div>
+      </div>
+  
+      <!-- Données disponibles -->
+      <div v-else-if="searches.length > 0" class="searches-container">
+        <h3 class="text-xl font-bold mb-6">Mes alertes (<span>{{ searches.length }}</span>)</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div v-for="(search, index) in searches" :key="index" class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+              <h4 class="font-medium text-gray-900 truncate">
+                {{ search && search.nom ? search.nom : 'Alerte sans nom' }}
+              </h4>
+              <div class="flex space-x-2">
+                <button 
+                  @click="toggleSearchStatus(search)" 
+                  class="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+                  :class="search.notifications_actives ? 'text-cyan-600 bg-cyan-100' : 'text-gray-400 bg-gray-200'"
+                  :title="search.notifications_actives ? 'Désactiver l\'alerte' : 'Activer l\'alerte'">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                </button>
+                <button 
+                  @click="deleteSearch(search)" 
+                  class="p-1 rounded-full text-red-600 bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
+                  title="Supprimer l'alerte">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="p-4">
+              <div class="space-y-3">
+                <div class="flex items-center" v-if="search.type_bien">
+                  <span class="text-sm font-medium text-gray-500 w-20">Type:</span>
+                  <span class="text-sm text-gray-900">{{ formatType(search.type_bien) }}</span>
+                </div>
+                <div class="flex items-center" v-if="search.localisation">
+                  <span class="text-sm font-medium text-gray-500 w-20">Lieu:</span>
+                  <span class="text-sm text-gray-900">{{ search.localisation }}</span>
+                </div>
+                <div class="flex items-center" v-if="search.prix_max">
+                  <span class="text-sm font-medium text-gray-500 w-20">Prix max:</span>
+                  <span class="text-sm text-gray-900">{{ formatPrice(search.prix_max) }}</span>
+                </div>
+                <div class="flex items-center" v-if="search.surface_min || search.surface_max">
+                  <span class="text-sm font-medium text-gray-500 w-20">Surface:</span>
+                  <span class="text-sm text-gray-900">
+                    {{ formatSurface(search.surface_min) }} - {{ formatSurface(search.surface_max) }}
+                  </span>
+                </div>
+                <div class="flex items-center" v-if="search.chambres_min || search.chambres_max">
+                  <span class="text-sm font-medium text-gray-500 w-20">Chambres:</span>
+                  <span class="text-sm text-gray-900">
+                    {{ search.chambres_min || '?' }} - {{ search.chambres_max || '?' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-between items-center">
+              <small class="text-xs text-gray-500">Créée le {{ formatDate(search.date_created) }}</small>
+              <NuxtLink 
+                :to="`/recherche?criteria=${encodeSearchCriteria(search)}`" 
+                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-cyan-700 bg-cyan-100 hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
+                Voir les biens
+              </NuxtLink>
             </div>
           </div>
-          <div class="flex items-center">
-            <span class="text-sm text-gray-500 mr-2">Alertes</span>
-            <label class="switch relative inline-block w-10 h-5">
-              <input 
-                type="checkbox" 
-                v-model="search.notificationsEnabled"
-                class="opacity-0 w-0 h-0" 
-                @change="updateSearchNotification(search)"
-              />
-              <span class="slider absolute cursor-pointer inset-0 bg-gray-300 rounded-full transition-all duration-300 before:absolute before:h-3 before:w-3 before:left-1 before:bottom-1 before:bg-white before:rounded-full before:transition-all before:duration-300"></span>
-            </label>
-          </div>
         </div>
       </div>
     </div>
-    
-    <!-- Modal d'édition -->
-    <div 
-      v-if="showEditModal" 
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-    >
-      <div class="bg-white rounded-lg max-w-lg w-full p-6">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-medium text-gray-900">Modifier l'alerte</h3>
-          <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-500">
-            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-        
-        <!-- Le reste du modal reste identique -->
-      </div>
-    </div>
-  </div>
-</template>
-
+  </template>
+  
 <script>
+import { useDirectusSDK } from '~/composables/useDirectusSDK';
+import { useAuthStore } from '~/stores/useAuthStore';
+import { ref, watch, onUnmounted } from 'vue';
+
 export default {
   name: 'SearchesTab',
-  
   props: {
-    userId: {
-      type: String,
-      required: true
+    isActive: {
+      type: Boolean,
+      default: false
     }
   },
-  
-  data() {
-    return {
-      // Données
-      savedSearches: [],
-      
-      // États
-      loading: false,
-      loadingAction: false,
-      allNotificationsEnabled: true,
-      showEditModal: false,
-      showAdvancedCriteria: false,
-      
-      // Alerte en cours d'édition
-      editedSearch: null,
-      editedSearchIndex: -1,
-      
-      // Types de biens immobiliers disponibles
-      propertyTypes: [
-        'maisons',
-        'appartements',
-        'immeubles',
-        'construction',
-        'maisons_dhote'
-      ]
-    };
-  },
-  
-  created() {
-    // Charger les alertes au montage du composant
-    this.fetchSavedSearches();
-  },
-  
-  methods: {
-    // Récupération des alertes depuis Directus
-    async fetchSavedSearches() {
-      this.loading = true;
-      
-      try {
-        // Requête à l'API Directus via notre proxy
-        const response = await fetch(`/api/directus/items/recherches_sauvegardees?filter[utilisateur][_eq]=${this.userId}`);
+  setup(props) {
+    const directusSDK = useDirectusSDK();
+    const authStore = useAuthStore();
+    
+    const loading = ref(false);
+    const error = ref(false);
+    const errorMessage = ref('');
+    const searches = ref([]);
+    const dataRequested = ref(false);
+    
+    async function fetchSearches() {
+      // Vérifier si l'utilisateur est connecté
+      if (!authStore.user) {
+        console.log('Attente des données utilisateur...');
+        loading.value = true;
         
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data && data.data) {
-          // Transformer les données avant de les assigner
-          this.savedSearches = data.data.map(search => {
-            // Extraire les critères supplémentaires
-            let supplementaryFeatures = {};
-            if (search.criteres_supplementaires) {
-              try {
-                if (typeof search.criteres_supplementaires === 'string') {
-                  supplementaryFeatures = JSON.parse(search.criteres_supplementaires);
-                } else {
-                  supplementaryFeatures = search.criteres_supplementaires;
-                }
-              } catch (e) {
-                console.error('Erreur lors du parsing des critères supplémentaires:', e);
-                supplementaryFeatures = {};
-              }
-            }
-            
-            // Construire l'objet de critères
-            const criteria = {
-              type: search.type_bien || '',
-              location: search.localisation || '',
-              maxPrice: search.prix_max,
-              minSurface: search.surface_min,
-              maxSurface: search.surface_max,
-              minRooms: search.pieces_min,
-              maxRooms: search.pieces_max,
-              minBedrooms: search.chambres_min,
-              maxBedrooms: search.chambres_max,
-              features: {
-                balcony: supplementaryFeatures.balcon || false,
-                parking: supplementaryFeatures.parking || false,
-                elevator: supplementaryFeatures.ascenseur || false,
-                garden: supplementaryFeatures.jardin || false
-              }
-            };
-            
-            return {
-              id: search.id,
-              name: search.nom || '',
-              notificationsEnabled: search.notifications_actives || false,
-              criteria: criteria,
-              originalData: search // Conserver les données originales pour la mise à jour
-            };
+        // Attendre que les données utilisateur soient disponibles avec un timeout
+        const timeout = setTimeout(() => {
+          if (loading.value) {
+            console.error('Timeout: Impossible de récupérer les données utilisateur');
+            error.value = true;
+            errorMessage.value = 'Vous devez être connecté pour accéder à vos alertes.';
+            loading.value = false;
+            searches.value = [];
+          }
+        }, 5000);
+
+        // Tenter de récupérer l'utilisateur directement
+        try {
+          const userResponse = await directusSDK.getSingle('users/me', {
+            fields: ['id']
           });
           
-          // Vérifier si toutes les notifications sont activées
-          this.checkAllNotificationsState();
-        } else {
-          this.savedSearches = [];
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des alertes:', error);
-        this.savedSearches = [];
-      } finally {
-        this.loading = false;
-      }
-    },
-    
-    // Vérifier l'état global des notifications
-    checkAllNotificationsState() {
-      this.allNotificationsEnabled = this.savedSearches.length > 0 && 
-        this.savedSearches.every(search => search.notificationsEnabled);
-    },
-    
-    // Activer/désactiver toutes les alertes
-    async toggleNotificationsForAll() {
-      if (this.savedSearches.length === 0 || this.loadingAction) return;
-      
-      const newState = !this.allNotificationsEnabled;
-      this.loadingAction = true;
-      
-      try {
-        // Préparer les mises à jour pour chaque alerte
-        const updatePromises = this.savedSearches.map(async (search) => {
-          search.notificationsEnabled = newState;
+          if (!userResponse || !userResponse.data || !userResponse.data.id) {
+            console.error('Réponse utilisateur invalide:', userResponse);
+            throw new Error('Impossible de récupérer les informations utilisateur');
+          }
           
-          return fetch(`/api/directus/items/recherches_sauvegardees/${search.id}`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              notifications_actives: newState
-            })
-          });
-        });
-        
-        // Attendre que toutes les mises à jour soient terminées
-        await Promise.all(updatePromises);
-        
-        this.allNotificationsEnabled = newState;
-      } catch (error) {
-        console.error('Erreur lors de la mise à jour des alertes:', error);
-        // Restaurer l'état précédent en cas d'erreur
-        await this.fetchSavedSearches();
-      } finally {
-        this.loadingAction = false;
-      }
-    },
-    
-    // Mettre à jour les notifications pour une alerte spécifique
-    async updateSearchNotification(search) {
-      try {
-        const response = await fetch(`/api/directus/items/recherches_sauvegardees/${search.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            notifications_actives: search.notificationsEnabled
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
+          console.log('Utilisateur récupéré directement:', userResponse.data.id);
+          clearTimeout(timeout);
+          await loadSearchesForUser(userResponse.data.id);
+          return;
+        } catch (primaryError) {
+          console.warn('Impossible de récupérer l\'utilisateur directement:', primaryError);
+          // Continuer et attendre que l'utilisateur soit chargé dans le store
         }
         
-        // Vérifier si toutes les notifications sont activées/désactivées
-        this.checkAllNotificationsState();
-      } catch (error) {
-        console.error('Erreur lors de la mise à jour de l\'alerte:', error);
-        // Restaurer l'état précédent en cas d'erreur
-        search.notificationsEnabled = !search.notificationsEnabled;
-      }
-    },
-    
-    // Éditer une alerte
-    editSearch(search) {
-      // Créer une copie profonde pour éviter de modifier directement l'objet
-      this.editedSearch = JSON.parse(JSON.stringify(search));
-      this.editedSearchIndex = this.savedSearches.findIndex(s => s.id === search.id);
-      this.showAdvancedCriteria = this.hasAdvancedCriteria(this.editedSearch);
-      this.showEditModal = true;
-    },
-    
-    // Vérifier si l'alerte contient des critères avancés
-    hasAdvancedCriteria(search) {
-      const { criteria } = search;
-      return criteria.minSurface || 
-        criteria.maxSurface || 
-        criteria.minRooms || 
-        criteria.maxRooms || 
-        criteria.minBedrooms ||
-        criteria.maxBedrooms ||
-        Object.values(criteria.features).some(v => v);
-    },
-    
-    // Sauvegarder une alerte modifiée
-    async saveSearch() {
-      if (!this.editedSearch.criteria.type && !this.editedSearch.criteria.location) {
-        alert('Veuillez spécifier au moins un type de bien ou une localisation');
+        // Attendre un peu que les données utilisateur soient chargées dans le store
+        let attempts = 0;
+        const maxAttempts = 10;
+        const checkInterval = setInterval(async () => {
+          attempts++;
+          if (authStore.user) {
+            console.log('Données utilisateur trouvées après attente');
+            clearInterval(checkInterval);
+            clearTimeout(timeout);
+            await loadSearchesForUser(authStore.user.id);
+          } else if (attempts >= maxAttempts) {
+            console.error('Nombre maximum de tentatives atteint');
+            clearInterval(checkInterval);
+            clearTimeout(timeout);
+            error.value = true;
+            errorMessage.value = 'Impossible de vérifier votre identité. Veuillez vous reconnecter.';
+            loading.value = false;
+            searches.value = [];
+          }
+        }, 500);
+        
         return;
       }
       
-      this.loadingAction = true;
+      await loadSearchesForUser(authStore.user.id);
+    }
+    
+    async function loadSearchesForUser(userId) {
+      if (!userId) {
+        console.error('ID utilisateur manquant');
+        error.value = true;
+        errorMessage.value = 'Vous devez être connecté pour accéder à vos alertes.';
+        searches.value = [];
+        loading.value = false;
+        return;
+      }
+
+      loading.value = true;
+      error.value = false;
       
+      // Timeout pour éviter les chargements infinis
+      const timeout = setTimeout(() => {
+        if (loading.value) {
+          console.log('Timeout atteint lors du chargement des alertes');
+          loading.value = false;
+          searches.value = [];
+        }
+      }, 5000);
+
       try {
-        // Préparer les données pour l'API selon la structure de la table
-        const updateData = {
-          nom: this.editedSearch.name,
-          notifications_actives: this.editedSearch.notificationsEnabled,
-          type_bien: this.editedSearch.criteria.type,
-          localisation: this.editedSearch.criteria.location,
-          prix_max: this.editedSearch.criteria.maxPrice,
-          surface_min: this.editedSearch.criteria.minSurface,
-          surface_max: this.editedSearch.criteria.maxSurface,
-          pieces_min: this.editedSearch.criteria.minRooms,
-          pieces_max: this.editedSearch.criteria.maxRooms,
-          chambres_min: this.editedSearch.criteria.minBedrooms,
-          chambres_max: this.editedSearch.criteria.maxBedrooms,
-          criteres_supplementaires: JSON.stringify(this.editedSearch.criteria.features)
+        console.log('Chargement des alertes pour l\'utilisateur:', userId);
+        
+        // Méthode alternative utilisant le proxy API personnalisé
+        let alertesData = [];
+        
+        try {
+          // Tentative via la méthode standardisée du SDK si disponible
+          try {
+            console.log('Tentative de récupération via SDK standardisé...');
+            const standardResult = await directusSDK.getUserSearches();
+            
+            if (standardResult && standardResult.data && Array.isArray(standardResult.data)) {
+              console.log('Alertes récupérées via SDK standardisé:', standardResult.data);
+              alertesData = standardResult.data;
+              searches.value = alertesData;
+              return;
+            }
+          } catch (standardError) {
+            console.warn('SDK standardisé non disponible ou erreur:', standardError);
+          }
+          
+          // Premier essai avec getItems standard et client_id
+          console.log('Tentative avec getItems et client_id...');
+          const result = await directusSDK.getItems('recherches_sauvegardees', {
+            filter: {
+              client_id: {
+                _eq: userId
+              }
+            }
+          });
+          
+          // Inspecter la réponse pour déboguer
+          console.log('Réponse standard de l\'API avec client_id:', result);
+          
+          if (result && result.data && Array.isArray(result.data) && result.data.length > 0) {
+            alertesData = result.data;
+            searches.value = alertesData;
+            return;
+          }
+          
+          // Si aucun résultat, essayer avec l'ancien champ "utilisateur" (pour compatibilité)
+          console.log('Aucun résultat avec client_id, tentative avec utilisateur...');
+          const legacyResult = await directusSDK.getItems('recherches_sauvegardees', {
+            filter: {
+              utilisateur: {
+                _eq: userId
+              }
+            }
+          });
+          
+          console.log('Réponse de l\'API avec utilisateur:', legacyResult);
+          
+          if (legacyResult && legacyResult.data && Array.isArray(legacyResult.data)) {
+            alertesData = legacyResult.data;
+          }
+        } catch (primaryError) {
+          console.warn('Méthodes SDK échouées, tentative avec fetch direct:', primaryError);
+          
+          // Tentative avec fetch direct et client_id
+          try {
+            const response = await fetch(`/api/directus/items/recherches_sauvegardees?filter[client_id][_eq]=${userId}`);
+            
+            if (!response.ok) {
+              console.warn('Fetch avec client_id a échoué, tentative avec utilisateur');
+              // Essayer avec l'ancien champ si le nouveau échoue
+              const legacyResponse = await fetch(`/api/directus/items/recherches_sauvegardees?filter[utilisateur][_eq]=${userId}`);
+              
+              if (!legacyResponse.ok) {
+                throw new Error(`Erreur HTTP: ${legacyResponse.status}`);
+              }
+              
+              const legacyJsonData = await legacyResponse.json();
+              console.log('Réponse fetch direct avec utilisateur:', legacyJsonData);
+              
+              if (legacyJsonData && legacyJsonData.data && Array.isArray(legacyJsonData.data)) {
+                alertesData = legacyJsonData.data;
+              }
+            } else {
+              const jsonData = await response.json();
+              console.log('Réponse fetch direct avec client_id:', jsonData);
+              
+              if (jsonData && jsonData.data && Array.isArray(jsonData.data)) {
+                alertesData = jsonData.data;
+              }
+            }
+          } catch (fallbackError) {
+            console.error('Toutes les méthodes ont échoué:', fallbackError);
+            throw primaryError; // Rethrow l'erreur originale
+          }
+        }
+        
+        // Utilisation des données récupérées
+        console.log('Alertes récupérées finalement:', alertesData);
+        searches.value = alertesData;
+        
+      } catch (error) {
+        console.error('Erreur lors du chargement des alertes:', error);
+        error.value = true;
+        errorMessage.value = error.message || 'Erreur lors du chargement des alertes';
+        searches.value = [];
+      } finally {
+        clearTimeout(timeout);
+        loading.value = false;
+      }
+    }
+    
+    async function toggleSearchStatus(search) {
+      try {
+        // Créer une copie mise à jour
+        const updatedSearch = { 
+          ...search, 
+          notifications_actives: !search.notifications_actives 
         };
         
-        // Envoyer la mise à jour à l'API
-        const response = await fetch(`/api/directus/items/recherches_sauvegardees/${this.editedSearch.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(updateData)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
+        // S'assurer que client_id est défini lors de la mise à jour
+        // Si client_id n'existe pas, utiliser utilisateur comme fallback
+        if (!updatedSearch.client_id && updatedSearch.utilisateur) {
+          updatedSearch.client_id = updatedSearch.utilisateur;
         }
         
-        // Mise à jour locale
-        if (this.editedSearchIndex !== -1) {
-          this.savedSearches[this.editedSearchIndex] = { ...this.editedSearch };
+        console.log('Mise à jour de l\'alerte:', updatedSearch);
+        await directusSDK.updateItem('recherches_sauvegardees', search.id, updatedSearch);
+        
+        // Mettre à jour l'état local
+        const index = searches.value.findIndex(s => s.id === search.id);
+        if (index !== -1) {
+          searches.value[index].notifications_actives = !search.notifications_actives;
+          
+          // Mettre à jour client_id dans l'état local si nécessaire
+          if (!searches.value[index].client_id && searches.value[index].utilisateur) {
+            searches.value[index].client_id = searches.value[index].utilisateur;
+          }
         }
         
-        // Fermer le modal
-        this.showEditModal = false;
-        this.editedSearch = null;
-        this.editedSearchIndex = -1;
-        
-        // Vérifier l'état des notifications
-        this.checkAllNotificationsState();
+        // Message de confirmation
+        // this.$toast.success(updatedSearch.notifications_actives ? 'Alerte activée' : 'Alerte désactivée');
       } catch (error) {
-        console.error('Erreur lors de la sauvegarde de l\'alerte:', error);
-        alert('Une erreur est survenue lors de la sauvegarde de l\'alerte');
-      } finally {
-        this.loadingAction = false;
+        console.error('Erreur lors de la modification de l\'alerte:', error);
+        // this.$toast.error('Impossible de modifier l\'alerte');
       }
-    },
+    }
     
-    // Supprimer une alerte
-    async deleteSearch(id) {
+    async function deleteSearch(search) {
       if (!confirm('Êtes-vous sûr de vouloir supprimer cette alerte ?')) {
         return;
       }
       
-      this.loadingAction = true;
-      
       try {
-        // Appel à l'API pour supprimer l'alerte
-        const response = await fetch(`/api/directus/items/recherches_sauvegardees/${id}`, {
-          method: 'DELETE'
-        });
+        console.log('Suppression de l\'alerte ID:', search.id);
+        await directusSDK.deleteItem('recherches_sauvegardees', search.id);
         
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
+        // Mettre à jour l'état local
+        searches.value = searches.value.filter(s => s.id !== search.id);
         
-        // Mise à jour locale
-        this.savedSearches = this.savedSearches.filter(search => search.id !== id);
-        
-        // Vérifier l'état des notifications
-        this.checkAllNotificationsState();
+        // Message de confirmation
+        // this.$toast.success('Alerte supprimée avec succès');
       } catch (error) {
         console.error('Erreur lors de la suppression de l\'alerte:', error);
-        alert('Une erreur est survenue lors de la suppression de l\'alerte');
-      } finally {
-        this.loadingAction = false;
+        // this.$toast.error('Impossible de supprimer l\'alerte');
       }
-    },
-    
-    // Générer l'URL pour une alerte sauvegardée
-    generateSearchUrl(search) {
-      const params = new URLSearchParams();
-      const { criteria } = search;
-      
-      if (criteria.type) params.append('type', criteria.type);
-      if (criteria.location) params.append('lieu', criteria.location);
-      if (criteria.maxPrice) params.append('prix_max', criteria.maxPrice);
-      
-      // Ajouter les critères avancés
-      if (criteria.minSurface) params.append('surface_min', criteria.minSurface);
-      if (criteria.maxSurface) params.append('surface_max', criteria.maxSurface);
-      if (criteria.minRooms) params.append('pieces_min', criteria.minRooms);
-      if (criteria.maxRooms) params.append('pieces_max', criteria.maxRooms);
-      if (criteria.minBedrooms) params.append('chambres_min', criteria.minBedrooms);
-      if (criteria.maxBedrooms) params.append('chambres_max', criteria.maxBedrooms);
-      
-      // Ajouter les caractéristiques
-      for (const [key, value] of Object.entries(criteria.features)) {
-        if (value) {
-          const featureKey = key === 'balcony' ? 'balcon' : 
-                           key === 'parking' ? 'parking' : 
-                           key === 'elevator' ? 'ascenseur' : 
-                           key === 'garden' ? 'jardin' : key;
-          params.append(featureKey, 'true');
-        }
-      }
-      
-      return `/annonces?${params.toString()}`;
-    },
-    
-    // Formater les critères de recherche pour l'affichage
-    formatSearchCriteria(search) {
-      const parts = [];
-      const { criteria } = search;
-      
-      if (criteria.type) {
-        // Convertir l'ID de type en libellé lisible
-        const typeLabels = {
-          'maisons': 'Maison',
-          'appartements': 'Appartement',
-          'immeubles': 'Immeuble',
-          'construction': 'Construction',
-          'maisons_dhote': 'Maison d\'hôte'
-        };
-        parts.push(typeLabels[criteria.type] || criteria.type);
-      }
-      
-      if (criteria.location) parts.push(criteria.location);
-      if (criteria.maxPrice) parts.push(`Budget: ${this.formatPrice(criteria.maxPrice)}`);
-      
-      // Ajouter les critères de surface si présents
-      if (criteria.minSurface && criteria.maxSurface) {
-        parts.push(`${criteria.minSurface}-${criteria.maxSurface} m²`);
-      } else if (criteria.minSurface) {
-        parts.push(`Min ${criteria.minSurface} m²`);
-      } else if (criteria.maxSurface) {
-        parts.push(`Max ${criteria.maxSurface} m²`);
-      }
-      
-      // Ajouter les critères de pièces si présents
-      if (criteria.minRooms && criteria.maxRooms) {
-        parts.push(`${criteria.minRooms}-${criteria.maxRooms} pièces`);
-      } else if (criteria.minRooms) {
-        parts.push(`Min ${criteria.minRooms} pièces`);
-      } else if (criteria.maxRooms) {
-        parts.push(`Max ${criteria.maxRooms} pièces`);
-      }
-      
-      // Ajouter les critères de chambres si présents
-      if (criteria.minBedrooms && criteria.maxBedrooms) {
-        parts.push(`${criteria.minBedrooms}-${criteria.maxBedrooms} ch.`);
-      } else if (criteria.minBedrooms) {
-        parts.push(`Min ${criteria.minBedrooms} ch.`);
-      } else if (criteria.maxBedrooms) {
-        parts.push(`Max ${criteria.maxBedrooms} ch.`);
-      }
-      
-      return parts.join(' - ');
-    },
-    
-    // Formater un prix
-    formatPrice(price) {
-      return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(price);
     }
+    
+    function formatType(type) {
+      const types = {
+        'apartment': 'Appartement',
+        'house': 'Maison',
+        'land': 'Terrain',
+        'commercial': 'Local commercial',
+        'office': 'Bureau'
+      };
+      return types[type] || type;
+    }
+    
+    function formatPrice(price) {
+      if (!price) return 'N/A';
+      return new Intl.NumberFormat('fr-FR', { 
+        style: 'currency', 
+        currency: 'EUR',
+        maximumFractionDigits: 0 
+      }).format(price);
+    }
+    
+    function formatSurface(surface) {
+      if (!surface) return 'N/A';
+      return `${surface} m²`;
+    }
+    
+    function formatDate(dateString) {
+      if (!dateString) return 'N/A';
+      
+      const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      };
+      
+      return new Date(dateString).toLocaleDateString('fr-FR', options);
+    }
+    
+    function encodeSearchCriteria(search) {
+      // Encoder les critères pour les utiliser dans l'URL
+      return encodeURIComponent(JSON.stringify({
+        type: search.type_bien,
+        location: search.localisation,
+        max_price: search.prix_max,
+        min_surface: search.surface_min,
+        max_surface: search.surface_max,
+        min_bedrooms: search.chambres_min,
+        max_bedrooms: search.chambres_max
+      }));
+    }
+    
+    // Chargement initial des données
+    let unwatch = null;
+    
+    if (props.isActive && !dataRequested.value) {
+      fetchSearches();
+      dataRequested.value = true;
+    } else {
+      unwatch = watch(() => props.isActive, (newVal) => {
+        if (newVal && !dataRequested.value) {
+          fetchSearches();
+          dataRequested.value = true;
+          
+          // Nettoyer le watcher après utilisation
+          if (unwatch) {
+            unwatch();
+            unwatch = null;
+          }
+        }
+      });
+    }
+    
+    // Nettoyage à la destruction du composant
+    onUnmounted(() => {
+      if (unwatch) {
+        unwatch();
+      }
+    });
+    
+    return {
+      loading,
+      error,
+      errorMessage,
+      searches,
+      toggleSearchStatus,
+      deleteSearch,
+      formatType,
+      formatPrice,
+      formatSurface,
+      formatDate,
+      encodeSearchCriteria
+    };
   }
 };
 </script>
-
-<style scoped>
-/* Style pour l'indicateur activé/désactivé */
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 12px;
-  width: 12px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  transition: 0.4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #0ea5e9;
-}
-
-input:checked + .slider:before {
-  transform: translateX(18px);
-}
-</style>

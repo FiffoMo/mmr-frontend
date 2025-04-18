@@ -64,10 +64,10 @@
             </div>
           </div>
           
-          <!-- Bouton en bas de la carte -->
+          <!-- Bouton en bas de la carte - MODIFICATION ICI -->
           <div class="px-6 pb-6 mt-auto">
             <NuxtLink
-              :to="forfait.lien_achat || '/tarifs'"
+              :to="forfait.lien_achat || `/acheter-forfait/${forfait.id}`"
               class="block w-full text-center py-3 px-4 rounded-md font-medium transition-colors"
               :class="forfait.nom && forfait.nom.toLowerCase().includes('dixit') 
                 ? 'bg-amber-500 hover:bg-amber-600 text-white' 
@@ -91,114 +91,144 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useDirectusSDK } from '~/composables/useDirectusSDK';
 
+const directusSDK = useDirectusSDK();
 const forfaits = ref([]);
 const loading = ref(true);
 const error = ref(null);
 const debugInfo = ref('');
 
 onMounted(async () => {
+  // Configuration du timeout
+  const timeout = setTimeout(() => {
+    if (loading.value) {
+      loading.value = false;
+      error.value = "La requête a pris trop de temps à s'exécuter";
+    }
+  }, 5000);
+  
   try {
     loading.value = true;
     
-    // Récupérer tous les produits, sans filtre sur le type
-    console.log('Récupération de tous les produits...');
+    console.log('Récupération des produits...');
+    debugInfo.value = 'Tentative de récupération via SDK...';
+    
+    // Approche 1: Tentative avec le SDK
+    try {
+      const produits = await directusSDK.getItems('produits', {
+        fields: '*',
+        filter: {
+          status: {
+            _eq: 'published'
+          }
+        }
+      });
+      
+      if (produits && produits.length > 0) {
+        debugInfo.value = `Produits récupérés via SDK: ${produits.length}`;
+        processProducts(produits);
+        return;
+      } else {
+        debugInfo.value += ' | SDK retourne vide';
+      }
+    } catch (sdkError) {
+      console.warn('Échec de récupération des produits via SDK:', sdkError);
+      debugInfo.value += ` | Erreur SDK: ${sdkError.message}`;
+    }
+    
+    // Approche 2: Fetch direct URL encodée correctement
+    debugInfo.value += ' | Tentative via fetch direct...';
+    
     const response = await fetch('/api/directus/items/produits?fields=*&filter[status][_eq]=published');
     
     if (!response.ok) {
-      throw new Error(`Erreur lors de la récupération des produits: ${response.status}`);
+      throw new Error(`Erreur HTTP: ${response.status}`);
     }
     
     const data = await response.json();
-    console.log('Produits récupérés:', data);
-    
-    // Ajouter info de débogage
-    debugInfo.value = `Total produits: ${data.data?.length || 0}`;
+    debugInfo.value += ` | Fetch réussi: ${data.data?.length || 0} produits`;
     
     if (data.data && data.data.length > 0) {
-      // Filtrer pour trouver les forfaits Basic, Dixit et Premium
-      const filteredForfaits = data.data.filter(produit => {
-        if (!produit.nom) return false;
-        const nom = produit.nom.toLowerCase();
-        return (nom.includes('forfait') && (nom.includes('basic') || nom.includes('dixit') || nom.includes('premium')));
-      });
-      
-      // Ajouter info de débogage
-      debugInfo.value += ` | Forfaits trouvés: ${filteredForfaits.length}`;
-      
-      if (filteredForfaits.length > 0) {
-        // Trier les forfaits dans l'ordre : Basic, Dixit, Premium
-        filteredForfaits.sort((a, b) => {
-          const order = { 'basic': 1, 'dixit': 2, 'premium': 3 };
-          const nameA = (a.nom || '').toLowerCase();
-          const nameB = (b.nom || '').toLowerCase();
-          
-          // Déterminer l'ordre pour chaque forfait
-          let orderA = 99, orderB = 99;
-          for (const [key, value] of Object.entries(order)) {
-            if (nameA.includes(key)) orderA = value;
-            if (nameB.includes(key)) orderB = value;
-          }
-          
-          return orderA - orderB;
-        });
-        
-        forfaits.value = filteredForfaits;
-        console.log('Forfaits filtrés et triés:', forfaits.value);
-      } else {
-        // Si aucun forfait n'est trouvé, créer des forfaits factices
-        console.log('Aucun forfait trouvé, création de forfaits factices');
-        forfaits.value = [
-          {
-            id: 'basic',
-            nom: 'Forfait BASIC',
-            prix: 14.90,
-            description: 'Pour débuter avec l\'essentiel'
-          },
-          {
-            id: 'dixit',
-            nom: 'Forfait DIXIT',
-            prix: 69.90,
-            description: 'Notre meilleure offre qualité-prix'
-          },
-          {
-            id: 'premium',
-            nom: 'Forfait PREMIUM',
-            prix: 99.90,
-            description: 'Pour une visibilité maximale'
-          }
-        ];
-      }
+      processProducts(data.data);
+    } else {
+      debugInfo.value += ' | Aucun produit trouvé dans la réponse';
+      // Utiliser des forfaits par défaut
+      useFallbackProducts();
     }
   } catch (err) {
-    console.error('Erreur complète:', err);
+    console.error('Erreur lors de la récupération des forfaits:', err);
     error.value = `Impossible de charger les forfaits: ${err.message}`;
+    debugInfo.value += ` | Erreur finale: ${err.message}`;
     
     // Si une erreur se produit, afficher des forfaits par défaut
-    forfaits.value = [
-      {
-        id: 'basic',
-        nom: 'Forfait BASIC',
-        prix: 14.90,
-        description: 'Pour débuter avec l\'essentiel'
-      },
-      {
-        id: 'dixit',
-        nom: 'Forfait DIXIT',
-        prix: 69.90,
-        description: 'Notre meilleure offre qualité-prix'
-      },
-      {
-        id: 'premium',
-        nom: 'Forfait PREMIUM',
-        prix: 99.90,
-        description: 'Pour une visibilité maximale'
-      }
-    ];
+    useFallbackProducts();
   } finally {
+    clearTimeout(timeout);
     loading.value = false;
   }
 });
+
+// Traiter les produits récupérés de l'API
+const processProducts = (products) => {
+  // Filtrer pour trouver les forfaits Basic, Dixit et Premium
+  const filteredForfaits = products.filter(produit => {
+    if (!produit.nom) return false;
+    const nom = produit.nom.toLowerCase();
+    return (nom.includes('forfait') && (nom.includes('basic') || nom.includes('dixit') || nom.includes('premium')));
+  });
+  
+  debugInfo.value += ` | Forfaits trouvés: ${filteredForfaits.length}`;
+  
+  if (filteredForfaits.length > 0) {
+    // Trier les forfaits dans l'ordre : Basic, Dixit, Premium
+    filteredForfaits.sort((a, b) => {
+      const order = { 'basic': 1, 'dixit': 2, 'premium': 3 };
+      const nameA = (a.nom || '').toLowerCase();
+      const nameB = (b.nom || '').toLowerCase();
+      
+      // Déterminer l'ordre pour chaque forfait
+      let orderA = 99, orderB = 99;
+      for (const [key, value] of Object.entries(order)) {
+        if (nameA.includes(key)) orderA = value;
+        if (nameB.includes(key)) orderB = value;
+      }
+      
+      return orderA - orderB;
+    });
+    
+    forfaits.value = filteredForfaits;
+    console.log('Forfaits filtrés et triés:', forfaits.value);
+  } else {
+    debugInfo.value += ' | Utilisation des forfaits par défaut';
+    useFallbackProducts();
+  }
+};
+
+// Utiliser des forfaits par défaut
+const useFallbackProducts = () => {
+  console.log('Utilisation des forfaits par défaut');
+  forfaits.value = [
+    {
+      id: 'basic',
+      nom: 'Forfait BASIC',
+      prix: 14.90,
+      description: 'Pour débuter avec l\'essentiel'
+    },
+    {
+      id: 'dixit',
+      nom: 'Forfait DIXIT',
+      prix: 69.90,
+      description: 'Notre meilleure offre qualité-prix'
+    },
+    {
+      id: 'premium',
+      nom: 'Forfait PREMIUM',
+      prix: 99.90,
+      description: 'Pour une visibilité maximale'
+    }
+  ];
+};
 
 // Formatter le prix
 const formatPrice = (price) => {

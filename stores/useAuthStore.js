@@ -13,7 +13,9 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => !!state.token,
     userType: (state) => state.user?.type || 0,
     isClient: (state) => state.user?.type >= 1,
-    isAdClient: (state) => state.user?.type === 2
+    isAdClient: (state) => state.user?.type === 2,
+    // Ajout d'un getter pour client_id
+    clientId: (state) => state.user?.id || null
   },
   
   actions: {
@@ -47,6 +49,28 @@ export const useAuthStore = defineStore('auth', {
       if (typeof window !== 'undefined') {
         localStorage.setItem('auth_token', token);
         localStorage.setItem('auth_user', JSON.stringify(user));
+      }
+    },
+    
+    // Mettre à jour les données utilisateur
+    setUser(userData) {
+      if (!userData) return;
+      
+      // Fusionner les nouvelles données avec les données existantes
+      this.user = { ...this.user, ...userData };
+      
+      // Persister les modifications dans le localStorage
+      if (typeof window !== 'undefined' && this.user) {
+        localStorage.setItem('auth_user', JSON.stringify(this.user));
+      }
+      
+      console.log('Données utilisateur mises à jour dans le store:', this.user);
+    },
+    
+    // Synchroniser les données utilisateur avec le localStorage
+    syncUserData() {
+      if (typeof window !== 'undefined' && this.user) {
+        localStorage.setItem('auth_user', JSON.stringify(this.user));
       }
     },
     
@@ -263,6 +287,31 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.loading = false;
       }
+    },
+    
+    // Vérifier si l'utilisateur est connecté
+    checkAuth() {
+      if (typeof window !== 'undefined') {
+        const userStr = localStorage.getItem('auth_user');
+        const token = localStorage.getItem('auth_token');
+        
+        if (userStr && token) {
+          try {
+            this.user = JSON.parse(userStr);
+            this.token = token;
+            return true;
+          } catch (e) {
+            console.error("Erreur lors de la récupération des données utilisateur:", e);
+            this.clearAuth();
+            return false;
+          }
+        } else {
+          this.clearAuth();
+          return false;
+        }
+      }
+      
+      return false;
     }
   }
 });

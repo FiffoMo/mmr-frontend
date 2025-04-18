@@ -1,6 +1,15 @@
 // server/api/stripe/create-checkout-session.js
 import Stripe from 'stripe';
 
+// Fonction pour supprimer les balises HTML côté serveur
+function stripHtml(html) {
+  if (!html) return '';
+  // Supprimer les balises HTML avec des expressions régulières
+  return html.replace(/<[^>]*>/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+}
+
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
@@ -31,10 +40,18 @@ export default defineEventHandler(async (event) => {
         message: 'Produit non trouvé'
       });
     }
-    
+   
     const productData = await productResponse.json();
     const product = productData.data;
+
+    // Contrôle: Après avoir récupéré le produit
+    console.log('Produit récupéré par ID:', productId);
+    console.log('Données du produit:', product);
     
+    // Nettoyer le nom et la description pour Stripe
+    const cleanName = stripHtml(product.nom);
+    const cleanDescription = stripHtml(product.description || '');
+
     // Initialize Stripe
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY || 'sk_test_yourkey';
     const stripe = new Stripe(stripeSecretKey);
@@ -47,8 +64,8 @@ export default defineEventHandler(async (event) => {
           price_data: {
             currency: 'eur',
             product_data: {
-              name: product.nom,
-              description: product.description || '',
+              name: cleanName,
+              description: cleanDescription,
             },
             unit_amount: Math.round(product.prix * 100), // Convert to cents
           },

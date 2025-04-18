@@ -234,7 +234,10 @@
           </div>
           
           <!-- Bouton de contact -->
-          <button class="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-md font-medium mt-4">
+          <button 
+            @click="openContactForm" 
+            class="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-md font-medium mt-4"
+          >
             Contacter le vendeur
           </button>
         </div>
@@ -327,6 +330,40 @@
         </div>
       </div>
     </div>
+    <!-- Modal du formulaire de contact -->
+    <Teleport to="body">
+      <div v-if="showContactForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg max-w-md w-full relative">
+          <!-- Bouton de fermeture -->
+          <button 
+            @click="closeContactForm" 
+            class="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            aria-label="Fermer"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+          
+          <!-- Formulaire de contact -->
+          <ContactFormAnnonce 
+            :annonce-id="id"
+            :annonce-title="annonce.Titre || ''"
+            :proprietaire-id="annonce.proprietaire?.id || ''"
+            @close="closeContactForm"
+            @message-sent="handleMessageSent"
+          />
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Notification de succès (optionnelle, car déjà gérée dans le composant) -->
+    <div 
+      v-if="contactSuccess" 
+      class="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50"
+    >
+      Message envoyé avec succès !
+    </div>
   </div>
 </template>
 
@@ -335,6 +372,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import LocationMap from '~/components/common/LocationMap.vue';
 import { useAnnonces } from '~/composables/useAnnonces';
+import ContactFormAnnonce from '~/components/common/ContactFormAnnonce.vue';
 
 // Déclarer que cette page utilise le layout "annonces"
 definePageMeta({
@@ -352,6 +390,33 @@ const { fetchAnnonceById, loading, error } = useAnnonces();
 const annonce = ref({});
 const currentImage = ref('');
 const currentLocationImage = ref('');
+const showContactForm = ref(false);
+const contactSuccess = ref(false);
+
+// Ouvrir le formulaire de contact
+const openContactForm = () => {
+  showContactForm.value = true;
+};
+
+// Fermer le formulaire de contact
+const closeContactForm = () => {
+  showContactForm.value = false;
+};
+
+// Gérer l'envoi de message
+const handleMessageSent = (success) => {
+  contactSuccess.value = success;
+  if (success) {
+    // Fermer le formulaire après un succès
+    setTimeout(() => {
+      closeContactForm();
+      // Réinitialiser après fermeture
+      setTimeout(() => {
+        contactSuccess.value = false;
+      }, 500);
+    }, 3000);
+  }
+};
 
 // Sélectionner une image principale
 const selectImage = (imageKey) => {
