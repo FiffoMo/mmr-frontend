@@ -3,7 +3,7 @@
     <h2 class="text-2xl font-bold text-gray-900 mb-6">Mon profil</h2>
     
     <!-- Débogage du profil -->
-    <div class="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200">
+    <!-- <div class="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200">
       <h3 class="font-bold text-blue-800">Débogage ProfileTab</h3>
       <p>Loading: {{ loading || directusSDK?.loading }}</p>
       <p>Error: {{ error || directusSDK?.error }}</p>
@@ -14,10 +14,10 @@
       <button @click="fetchUserProfile" class="bg-blue-500 text-white p-2 rounded mt-2">
         Recharger le profil
       </button>
-    </div>
+    </div> -->
     
     <!-- Formulaire de profil -->
-    <form v-if="profileForm.first_name" @submit.prevent="saveProfile" class="space-y-6 bg-slate-200 p-6 rounded-lg border border-gray-200 shadow-sm">
+    <form v-if="profileForm.first_name" @submit.prevent="saveProfile" class="space-y-6 bg-slate-100 p-6 rounded-lg border border-gray-200 shadow-sm">
       <!-- Avatar / Logo -->
       <div class="flex flex-col md:flex-row items-start md:items-center gap-6 pb-6 border-b border-gray-200">
         <div class="flex-shrink-0">
@@ -113,6 +113,20 @@
               class="block w-full h-10 px-3 rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
               placeholder="Nom de votre entreprise (facultatif)"
             />
+          </div>
+          <!-- URL du site web -->
+          <div class="md:col-span-2">
+            <label for="website" class="block text-sm font-medium text-gray-700 mb-1">Site web</label>
+            <input
+              id="website"
+              v-model="profileForm.website_url"
+              type="url"
+              class="block w-full h-10 px-3 rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+              placeholder="https://www.votre-site.com (facultatif)"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              URL de votre site web professionnel (sera affiché sur vos annonces)
+            </p>
           </div>
         </div>
       </div>
@@ -229,7 +243,7 @@
         <button
           type="submit"
           :disabled="saving"
-          class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 flex items-center"
+          class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-500 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 flex items-center"
         >
           <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -300,6 +314,7 @@ export default {
         avatar: null,
         avatar_file: null, // Pour le téléchargement du fichier
         company: '',
+        website_url: '',
         phone: '',
         address: '',
         contact_instructions: '',
@@ -427,6 +442,7 @@ export default {
         avatar: userData.avatar || null,
         avatar_file: null,
         company: userData.company || '',
+        website_url: userData.website_url || '',
         phone: userData.phone || '',
         address: userData.address || '',
         contact_instructions: userData.contact_instructions || '',
@@ -479,71 +495,72 @@ export default {
     // Enregistrer le profil avec le SDK
     // Méthode saveProfile() complète et corrigée pour ProfileTab.vue
     async saveProfile() {
-  this.saving = true;
-  
-  try {
-    let avatarId = this.profileForm.avatar;
-    
-    // Si un nouveau fichier est téléchargé, l'uploader
-    if (this.profileForm.avatar_file) {
-      const fileData = await this.directusSDK.uploadFile(this.profileForm.avatar_file, {
-        title: `Avatar - ${this.profileForm.first_name} ${this.profileForm.last_name}`
-      });
+      this.saving = true;
       
-      // Récupérer l'ID du fichier téléchargé
-      if (fileData && fileData.id) {
-        avatarId = fileData.id;
+      try {
+        let avatarId = this.profileForm.avatar;
+        
+        // Si un nouveau fichier est téléchargé, l'uploader
+        if (this.profileForm.avatar_file) {
+          const fileData = await this.directusSDK.uploadFile(this.profileForm.avatar_file, {
+            title: `Avatar - ${this.profileForm.first_name} ${this.profileForm.last_name}`
+          });
+          
+          // Récupérer l'ID du fichier téléchargé
+          if (fileData && fileData.id) {
+            avatarId = fileData.id;
+          }
+        }
+        
+        // Données à envoyer
+        const userData = {
+          first_name: this.profileForm.first_name,
+          last_name: this.profileForm.last_name,
+          email: this.profileForm.email,
+          avatar: avatarId,
+          company: this.profileForm.company,
+          website_url: this.profileForm.website_url,
+          phone: this.profileForm.phone,
+          address: this.profileForm.address,
+          contact_instructions: this.profileForm.contact_instructions,
+          hide_email: this.profileForm.hide_email,
+          hide_phone: this.profileForm.hide_phone,
+          hide_address: this.profileForm.hide_address
+        };
+        
+        console.log('Mise à jour du profil avec données:', userData);
+        
+        // Mettre à jour le profil avec le SDK
+        const result = await this.directusSDK.updateUserProfile(userData);
+        
+        if (result) {
+          console.log('Profil mis à jour avec succès:', result);
+          
+          // Mettre à jour le formulaire avec les données retournées
+          this.initializeForm(result);
+          
+          // Mettre à jour l'utilisateur dans le store d'authentification
+          if (this.authStore && this.authStore.user) {
+            console.log('Mise à jour du store d\'authentification');
+            this.authStore.setUser(result);
+          }
+          
+          // Notification de succès
+          this.$emit('update-success', 'Votre profil a été mis à jour avec succès');
+          
+          // Déclencher un événement global pour informer les autres composants
+          window.dispatchEvent(new CustomEvent('user-data-updated', { detail: result }));
+        } else {
+          console.error('Aucune donnée retournée après la mise à jour');
+          throw new Error('Aucune donnée retournée après la mise à jour');
+        }
+      } catch (error) {
+        console.error('Erreur lors de la sauvegarde du profil:', error);
+        alert('Une erreur est survenue lors de la sauvegarde de votre profil. Veuillez réessayer.');
+      } finally {
+        this.saving = false;
       }
-    }
-    
-    // Données à envoyer
-    const userData = {
-      first_name: this.profileForm.first_name,
-      last_name: this.profileForm.last_name,
-      email: this.profileForm.email,
-      avatar: avatarId,
-      company: this.profileForm.company,
-      phone: this.profileForm.phone,
-      address: this.profileForm.address,
-      contact_instructions: this.profileForm.contact_instructions,
-      hide_email: this.profileForm.hide_email,
-      hide_phone: this.profileForm.hide_phone,
-      hide_address: this.profileForm.hide_address
-    };
-    
-    console.log('Mise à jour du profil avec données:', userData);
-    
-    // Mettre à jour le profil avec le SDK
-    const result = await this.directusSDK.updateUserProfile(userData);
-    
-    if (result) {
-      console.log('Profil mis à jour avec succès:', result);
-      
-      // Mettre à jour le formulaire avec les données retournées
-      this.initializeForm(result);
-      
-      // Mettre à jour l'utilisateur dans le store d'authentification
-      if (this.authStore && this.authStore.user) {
-        console.log('Mise à jour du store d\'authentification');
-        this.authStore.setUser(result);
-      }
-      
-      // Notification de succès
-      this.$emit('update-success', 'Votre profil a été mis à jour avec succès');
-      
-      // Déclencher un événement global pour informer les autres composants
-      window.dispatchEvent(new CustomEvent('user-data-updated', { detail: result }));
-    } else {
-      console.error('Aucune donnée retournée après la mise à jour');
-      throw new Error('Aucune donnée retournée après la mise à jour');
-    }
-  } catch (error) {
-    console.error('Erreur lors de la sauvegarde du profil:', error);
-    alert('Une erreur est survenue lors de la sauvegarde de votre profil. Veuillez réessayer.');
-  } finally {
-    this.saving = false;
-  }
-},
+    },
     
     // Réinitialiser le formulaire aux valeurs d'origine
     resetForm() {

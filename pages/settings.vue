@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Débogage pour voir les données brutes -->
-    <div class="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200">
+    <!-- <div class="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200">
       <h3 class="font-bold text-blue-800">Débogage des données</h3>
       <p>Loading: {{ loading || directusSDK?.loading }}</p>
       <p>Error: {{ error || directusSDK?.error }}</p>
@@ -12,13 +12,13 @@
       <button @click="fetchUserData" class="bg-blue-500 text-white p-2 rounded mt-2">
         Recharger les données
       </button>
-    </div>
+    </div> -->
     
     <!-- En-tête avec le titre et éventuelles informations utilisateur -->
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-3xl font-bold text-gray-900">Tableau de bord</h1>
       <div v-if="user" class="text-sm text-gray-600">
-        Connecté en tant que <span class="font-medium">{{ user.first_name }} {{ user.last_name }}</span>
+        Connecté en tant que <span class="font-black">{{ user.first_name }} {{ user.last_name }}</span>
       </div>
     </div>
     
@@ -44,21 +44,30 @@
     <div v-if="user">
       <!-- Tabs de navigation -->
       <div class="border-b border-gray-200 mb-6">
-        <nav class="-mb-px flex space-x-8 overflow-x-auto">
+        <nav class="-mb-px flex space-x-4 overflow-x-auto">
           <a 
             v-for="tab in filteredTabs" 
             :key="tab.id"
             :class="[
+              // Classes communes pour tous les onglets
+              'whitespace-nowrap py-3 px-2 border-b-2 font-medium text-sm cursor-pointer rounded-t-lg',
+              
+              // Classes spécifiques à l'onglet actif
               activeTab === tab.id 
                 ? 'border-cyan-500 text-cyan-600' 
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer'
+              
+              // Couleurs de fond spécifiques pour certains onglets
+              tab.id === 'orders' ? 'bg-slate-100' : '',
+              tab.id === 'listings' ? 'bg-green-100' : '',
+              tab.id === 'highlight' ? 'bg-blue-100' : '',
+              tab.id === 'ads' ? 'bg-yellow-100' : ''
             ]"
             @click="selectTab(tab.id)"
           >
             {{ tab.name }}
             <span v-if="tab.id === 'messages' && unreadMessages > 0" 
-                  class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
+                  class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
               {{ unreadMessages }}
             </span>
           </a>
@@ -107,7 +116,6 @@
           />
         </div>
         
-        <!-- Modules désactivés temporairement -->
         <div v-show="activeTab === 'listings'">
           <ListingsTab 
             :user-id="user.id"
@@ -231,8 +239,8 @@ export default {
         { id: 'messages', name: 'Messagerie' },
         { id: 'orders', name: 'Mes commandes' },
         { id: 'listings', name: 'Mes annonces' },
-        { id: 'ads', name: 'Mes publicités' },
-        { id: 'highlight', name: 'Mise en avant' }
+        { id: 'highlight', name: 'Mise en avant' },
+        { id: 'ads', name: 'Mes publicités' }
       ]
     };
   },

@@ -32,7 +32,7 @@
       <div class="text-center mt-10">
         <NuxtLink 
           to="/annonces" 
-          class="inline-block py-3 px-6 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-lg transition duration-200"
+          class="inline-block py-3 px-6 bg-cyan-500 hover:bg-cyan-700 text-white font-medium rounded-lg transition duration-200"
         >
           Voir toutes les annonces
         </NuxtLink>

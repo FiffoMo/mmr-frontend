@@ -140,16 +140,10 @@
             
             <div class="flex gap-3 max-w-md mx-auto">
               <NuxtLink 
-                to="/acheter-forfait/mise-en-avant" 
-                class="flex-1 flex items-center justify-center py-2 px-4 bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors"
+                :to="`/acheter-forfait/${option.id}`" 
+                class="w-full flex items-center justify-center py-2 px-4 bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors"
               >
                 Acheter cette option
-              </NuxtLink>
-              <NuxtLink 
-                to="/mes-annonces" 
-                class="flex-1 block py-2 px-4 border border-amber-500 text-amber-600 text-center rounded hover:bg-amber-50 transition-colors"
-              >
-                Ajouter à mes annonces
               </NuxtLink>
             </div>
           </div>

@@ -1,3 +1,4 @@
+// mmr-frontend/server/api/uploads/[...path].js
 import { join } from 'path';
 import { createReadStream, statSync } from 'fs';
 import { sendStream } from 'h3';

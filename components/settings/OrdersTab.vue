@@ -93,7 +93,7 @@
       <!-- Tableau des commandes -->
       <div class="overflow-x-auto rounded-lg border border-gray-200">
         <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+          <thead class="bg-gray-100">
             <tr>
               <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Référence
@@ -116,7 +116,17 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="order in paginatedOrders" :key="order.id" class="hover:bg-gray-50">
+            <tr 
+                v-for="order in paginatedOrders" 
+                :key="order.id" 
+                :class="[
+                  'hover:bg-opacity-75 transition-colors duration-150',
+                  order.type_produit === 'annonces' || (order.produit?.nom && order.produit.nom.toLowerCase().includes('annonce')) ? 'bg-green-100' : '',
+                  order.type_produit === 'mise_en_avant' || (order.produit?.nom && order.produit.nom.toLowerCase().includes('mise en avant')) ? 'bg-blue-100' : '',
+                  order.type_produit === 'publicite' || isAdPackage(order) ? 'bg-yellow-100' : '',
+                  !order.type_produit || (order.type_produit !== 'annonces' && order.type_produit !== 'mise_en_avant' && order.type_produit !== 'publicite' && !isAdPackage(order)) ? 'hover:bg-gray-50' : ''
+                ]"
+              >
               <td class="px-4 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">
                   #{{ order.reference || `CMD-${order.id}` }}
@@ -142,6 +152,13 @@
                 <div class="text-sm font-medium text-gray-900">
                   {{ formatPrice(order.montant) }}
                 </div>
+                <!-- Affichage du code promo si utilisé -->
+                <div v-if="order.code_promo_utilise && order.montant_reduction" class="text-xs text-green-600 flex items-center mt-1">
+                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                  </svg>
+                  -{{ formatPrice(order.montant_reduction) }} ({{ order.code_promo_utilise }})
+                </div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="getStatusClass(order.status)">
@@ -154,6 +171,15 @@
                   class="text-cyan-600 hover:text-cyan-900 mr-2"
                 >
                   Détails
+                </button>
+                <!-- Nouveau bouton "Créer ma publicité" -->
+                <button 
+                  v-if="order.status === 'active' && isAdPackage(order) && !isAdCreated(order)"
+                  @click="createAdFromOrder(order)" 
+                  class="text-gray-800 hover:text-green-500 mr-2"
+                  title="Créer une publicité avec ce forfait"
+                >
+                  Créer ma publicité
                 </button>
                 <button 
                   v-if="order.status === 'active'"
@@ -254,7 +280,32 @@
               </div>
               <div>
                 <h4 class="text-sm font-medium text-gray-500 mb-1">Montant</h4>
-                <p class="text-sm text-gray-900">{{ formatPrice(selectedOrder.montant) }}</p>
+                <div>
+                  <p class="text-sm text-gray-900">{{ formatPrice(selectedOrder.montant) }}</p>
+                  <!-- Affichage détaillé du code promo dans le modal -->
+                  <div v-if="selectedOrder.code_promo_utilise && selectedOrder.montant_reduction" class="mt-2 p-2 bg-green-50 rounded-md border border-green-200">
+                    <div class="flex items-center text-green-700 text-xs font-medium mb-1">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                      </svg>
+                      Code promo appliqué
+                    </div>
+                    <div class="text-xs text-gray-600">
+                      <div class="flex justify-between">
+                        <span>Code:</span>
+                        <span class="font-mono font-semibold">{{ selectedOrder.code_promo_utilise }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span>Réduction:</span>
+                        <span class="text-green-600 font-semibold">-{{ formatPrice(selectedOrder.montant_reduction) }}</span>
+                      </div>
+                      <div v-if="getPrixOriginal(selectedOrder)" class="flex justify-between pt-1 border-t border-green-200 mt-1">
+                        <span>Prix original:</span>
+                        <span class="line-through text-gray-500">{{ formatPrice(getPrixOriginal(selectedOrder)) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div v-if="selectedOrder.date_fin">
                 <h4 class="text-sm font-medium text-gray-500 mb-1">Date d'expiration</h4>
@@ -285,6 +336,15 @@
                 class="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
               >
                 Fermer
+              </button>
+              <!-- Nouveau bouton dans le modal pour les forfaits publicité non utilisés -->
+              <button 
+                v-if="selectedOrder.status === 'active' && isAdPackage(selectedOrder) && !isAdCreated(selectedOrder)"
+                @click="createAdFromOrder(selectedOrder); selectedOrder = null" 
+                type="button" 
+                class="inline-flex justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Créer ma publicité
               </button>
               <button 
                 v-if="selectedOrder.status === 'active'"
@@ -323,6 +383,9 @@ export default {
       orders: [],
       selectedOrder: null,
       
+      // Nouvelle propriété pour les publicités créées
+      createdAds: [],
+      
       // Filtres et tri
       statusFilter: '',
       sortBy: 'date_desc',
@@ -334,6 +397,7 @@ export default {
   },
 
   computed: {
+    // Publicités filtrées
     filteredOrders() {
       let result = [...this.orders];
       
@@ -393,9 +457,9 @@ export default {
   },
 
   mounted() {
-    if (this.isActive && !this.dataRequested) {
+    if (this.isActive) {
       this.fetchOrders();
-      this.dataRequested = true;
+      this.fetchCreatedAds(); // Nouvelle méthode pour récupérer les publicités existantes
     }
     
     // Ajouter un écouteur d'événement pour rafraîchir les données
@@ -413,6 +477,7 @@ export default {
       console.log('Rafraîchissement des données de commandes demandé');
       this.dataRequested = false; // Réinitialiser pour permettre une nouvelle requête
       this.fetchOrders();
+      this.fetchCreatedAds(); // Aussi rafraîchir les publicités créées
     },
     
     async fetchOrders() {
@@ -460,13 +525,17 @@ export default {
         try {
           const fallbackResult = await directusSDK.getItems('commandes', {
             filter: { client_id: { _eq: userId } },
-            fields: '*,produit.*',
-            sort: ['-date_created']
+            fields: '*,produit.*'
+            // Suppression du tri par date qui cause l'erreur 403
+            // sort: ['-date_created']
           });
           
           if (fallbackResult && fallbackResult.data && fallbackResult.data.length > 0) {
             console.log('Commandes récupérées via fallback SDK:', fallbackResult.data);
-            this.orders = fallbackResult.data;
+            // Trier côté client plutôt que côté serveur
+            this.orders = fallbackResult.data.sort((a, b) => {
+              return new Date(b.date_created || b.date_debut || 0) - new Date(a.date_created || a.date_debut || 0);
+            });
             return;
           } else {
             console.log('Aucune commande trouvée via fallback SDK, essai avec fetch direct...');
@@ -476,9 +545,9 @@ export default {
         }
         
         // Dernier recours: utiliser directement fetch via le proxy API
-        // CORRECTION: Utiliser client_id au lieu de client
-        const response = await fetch(`/api/directus/items/commandes?filter[client_id][_eq]=${userId}&fields=*,produit.*&sort=-date_created`);
-        
+        // CORRECTION: Utiliser client_id au lieu de client et supprimer le tri par date
+        const response = await fetch(`/api/directus/items/commandes?filter[client_id][_eq]=${userId}&fields=*,produit.*`);        
+
         if (!response.ok) {
           const errorData = await response.json();
           console.error('Erreur API:', errorData);
@@ -499,6 +568,126 @@ export default {
       }
     },
     
+    // Nouvelle méthode pour récupérer les publicités existantes liées à des commandes
+    async fetchCreatedAds() {
+      try {
+        const directusSDK = useDirectusSDK();
+        const authStore = useAuthStore();
+        const userId = authStore.user?.id;
+        
+        if (!userId) return;
+        
+        // Récupérer toutes les publicités de l'utilisateur qui ont une référence à une commande
+        try {
+          const result = await directusSDK.getItems('publicite', {
+            filter: {
+              _and: [
+                {
+                  _or: [
+                    { client_id: { _eq: userId } },
+                    { client: { _eq: userId } },
+                    { user_created: { _eq: userId } }
+                  ]
+                },
+                { commande_id: { _nnull: true } }
+              ]
+            },
+            fields: ['id', 'commande_id']
+          });
+          
+          if (result && result.data && result.data.length > 0) {
+            this.createdAds = result.data;
+            console.log('Publicités liées à des commandes:', this.createdAds);
+          } else {
+            console.log('Aucune publicité liée à une commande trouvée');
+            this.createdAds = [];
+          }
+        } catch (error) {
+          console.error('Erreur lors de la récupération des publicités liées:', error);
+          console.log('Fallback: tentative de récupération directe via fetch');
+          
+          // Fallback avec fetch direct
+          try {
+            const filter = JSON.stringify({
+              _and: [
+                {
+                  _or: [
+                    { client_id: { _eq: userId } },
+                    { client: { _eq: userId } },
+                    { user_created: { _eq: userId } }
+                  ]
+                },
+                { commande_id: { _nnull: true } }
+              ]
+            });
+            
+            const response = await fetch(`/api/directus/items/publicite?filter=${encodeURIComponent(filter)}&fields=id,commande_id`, {
+              credentials: 'include'
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data && data.data) {
+                this.createdAds = data.data;
+                console.log('Publicités liées récupérées par fetch:', this.createdAds);
+              }
+            }
+          } catch (fetchError) {
+            console.error('Échec de la récupération par fetch:', fetchError);
+            this.createdAds = [];
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des publicités liées:', error);
+        this.createdAds = [];
+      }
+    },
+    
+    // Vérifier si une commande est un forfait publicité
+    isAdPackage(order) {
+      // Vérifier si le type de produit contient "publicité" ou si le nom du produit contient "pub"
+      const typeContainsPublicite = order.type_produit && 
+        order.type_produit.toLowerCase().includes('publicité');
+      
+      // Vérifier si le produit associé existe et contient des mots-clés
+      const produitContientMotsClés = order.produit && order.produit.nom && (
+        order.produit.nom.toLowerCase().includes('pub') || 
+        order.produit.nom.toLowerCase().includes('bannière') ||
+        order.produit.nom.toLowerCase().includes('banniere') ||
+        order.produit.nom.toLowerCase().includes('affichage')
+      );
+      
+      return typeContainsPublicite || produitContientMotsClés;
+    },
+    
+    // Vérifier si une publicité a déjà été créée pour cette commande
+    isAdCreated(order) {
+      return this.createdAds.some(ad => ad.commande_id === order.id);
+    },
+    
+    // Créer une publicité à partir d'une commande
+    createAdFromOrder(order) {
+      console.log('Création d\'une publicité à partir de la commande:', order);
+      
+      // Détecter l'emplacement
+      let emplacement = 'inside_footer'; // valeur par défaut
+      if (order.produit && order.produit.emplacement) {
+        emplacement = order.produit.emplacement;
+      }
+      
+      // Rediriger vers la page de création de publicité avec plus de paramètres utiles
+      this.$router.push({
+        path: '/ads/creer',
+        query: { 
+          commande_id: order.id,
+          emplacement: emplacement, // ajouter l'emplacement comme paramètre si disponible
+          duree: order.produit?.duree_jours || 30, // ajouter la durée comme paramètre si disponible
+          type_produit: order.type_produit || '' // ajouter le type de produit comme paramètre
+        }
+      });
+    },
+    
+    // Méthodes essentielles qui manquaient - CORRECTION PRINCIPALE
     showOrderDetails(order) {
       this.selectedOrder = order;
     },
@@ -546,11 +735,19 @@ export default {
       
       return diffDays >= 0 && diffDays <= 7;
     },
+
+    // Calculer le prix original avant réduction
+    getPrixOriginal(order) {
+      if (order.montant_reduction && order.montant_reduction > 0) {
+        return parseFloat(order.montant) + parseFloat(order.montant_reduction);
+      }
+      return null;
+    },
     
     getStatusClass(status) {
       switch (status) {
         case 'active':
-          return 'bg-green-100 text-green-800';
+          return 'bg-green-200 text-green-800';
         case 'pending':
           return 'bg-yellow-100 text-yellow-800';
         case 'completed':

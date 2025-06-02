@@ -1,138 +1,221 @@
 // utils/email-service.js
+// Service email modulaire unifié pour Ma Maison Rapporte
+import { createRequire } from 'module';
+import { SMTP_CONFIG, EMAIL_CONFIG } from './email/config/smtp.js';
+import { generateEmailHeader } from './email/templates/base/header.js';
+import { generateEmailFooter } from './email/templates/base/footer.js';
+import { EMAIL_STYLES } from './email/templates/base/styles.js';
 
-/**
- * Service d'envoi d'emails
- * Ce service peut être configuré pour utiliser différents fournisseurs d'email
- * comme nodemailer, sendgrid, etc.
- */
+let transporterInstance = null;
 
-/**
- * Envoie un email
- * @param {Object} options - Options d'envoi
- * @param {string} options.to - Destinataire
- * @param {string} options.subject - Sujet de l'email
- * @param {string} options.text - Corps de l'email en texte brut (optionnel)
- * @param {string} options.html - Corps de l'email en HTML (optionnel)
- * @returns {Promise<Object>} - Résultat de l'envoi
- */
-export async function sendMail(options) {
-    // Vérification des paramètres requis
-    if (!options.to || !options.subject || (!options.text && !options.html)) {
-      throw new Error('Paramètres manquants pour l\'envoi d\'email');
-    }
+// Créer le transporteur email avec retry
+export const createEmailTransporter = async () => {
+  if (transporterInstance) {
+    return transporterInstance;
+  }
+
+  const require = createRequire(import.meta.url);
+  const nodemailer = require('nodemailer');
+
+  try {
+    // CORRECTION: Utiliser createTransport (pas createTransporter)
+    transporterInstance = nodemailer.createTransport(SMTP_CONFIG);
     
-    // Configuration des variables d'environnement
-    const emailService = process.env.EMAIL_SERVICE || 'directus';
-    const directusUrl = process.env.DIRECTUS_URL || 'http://localhost:8055';
-    const directusToken = process.env.DIRECTUS_ADMIN_TOKEN;
+    // Vérifier la connexion
+    await transporterInstance.verify();
+    console.log('✅ Transporteur email initialisé avec succès');
     
-    // En fonction du service configuré
-    switch (emailService.toLowerCase()) {
-      case 'directus':
-        // Utiliser Directus pour envoyer des emails
-        try {
-          const response = await fetch(`${directusUrl}/flows/trigger/send-email`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${directusToken}`
-            },
-            body: JSON.stringify({
-              to: options.to,
-              subject: options.subject,
-              html: options.html || options.text
-            })
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Erreur Directus: ${errorData.errors?.[0]?.message || response.status}`);
-          }
-          
-          return { success: true };
-        } catch (error) {
-          console.error('Erreur lors de l\'envoi d\'email via Directus:', error);
-          throw error;
-        }
-        
-      // Vous pouvez ajouter d'autres services ici
-      // case 'sendgrid':
-      //   // Configuration pour SendGrid
+    return transporterInstance;
+  } catch (error) {
+    console.error('❌ Erreur configuration SMTP:', error);
+    transporterInstance = null;
+    throw error;
+  }
+};
+
+// Service principal d'assemblage et envoi d'emails
+export const sendTemplatedEmail = async (emailOptions, maxRetries = 3) => {
+  const {
+    to,
+    subject,
+    content, // Contenu HTML du corps de l'email
+    headerTitle = null,
+    headerOptions = {},
+    footerOptions = {},
+    from = null
+  } = emailOptions;
+
+  console.log('📧 Préparation email templé:', {
+    to: Array.isArray(to) ? to.join(', ') : to,
+    subject,
+    hasContent: !!content,
+    headerTitle
+  });
+
+  try {
+    // Assembler le template complet
+    const fullHtml = assembleEmailTemplate({
+      content,
+      headerTitle,
+      headerOptions,
+      footerOptions
+    });
+
+    // Préparer les options d'envoi
+    const mailOptions = {
+      from: from || `"${EMAIL_CONFIG.companyName}" <${EMAIL_CONFIG.from}>`,
+      to: Array.isArray(to) ? to.join(', ') : to,
+      subject,
+      html: fullHtml
+    };
+
+    // Envoyer avec retry
+    const result = await sendEmailWithRetry(mailOptions, maxRetries);
+    
+    console.log('✅ Email templé envoyé avec succès:', result.messageId);
+    return {
+      success: true,
+      messageId: result.messageId,
+      accepted: result.accepted,
+      rejected: result.rejected
+    };
+
+  } catch (error) {
+    console.error('❌ Erreur envoi email templé:', error);
+    return {
+      success: false,
+      error: error.message,
+      code: error.code || 'UNKNOWN_ERROR'
+    };
+  }
+};
+
+// Fonction d'assemblage du template complet
+export const assembleEmailTemplate = ({
+  content,
+  headerTitle = 'Email Ma Maison Rapporte',
+  headerOptions = {},
+  footerOptions = {}
+}) => {
+  
+  console.log('🔧 Assemblage template:', {
+    headerTitle,
+    hasContent: !!content,
+    contentLength: content?.length || 0
+  });
+
+  // Générer les parties
+  const header = generateEmailHeader(headerTitle, headerOptions);
+  const footer = generateEmailFooter(footerOptions);
+
+  // Assembler le HTML complet
+  const fullHtml = `
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${headerTitle}</title>
+      ${EMAIL_STYLES}
+    </head>
+    <body>
+      <div class="email-container">
+        ${header}
+        <div class="email-content">
+          ${content || '<p>Contenu email manquant</p>'}
+        </div>
+        ${footer}
+      </div>
+    </body>
+    </html>
+  `;
+
+  return fullHtml;
+};
+
+// Envoi avec retry (fonction interne)
+const sendEmailWithRetry = async (mailOptions, maxRetries = 3) => {
+  const transporter = await createEmailTransporter();
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📤 Tentative d'envoi ${attempt}/${maxRetries}...`);
       
-      // case 'mailjet':
-      //   // Configuration pour Mailjet
-        
-      default:
-        // Service par défaut (simulé pour le développement)
-        console.log(`À: ${options.to}`);
-        console.log(`Sujet: ${options.subject}`);
-        console.log(`Contenu: ${options.html || options.text}`);
-        
-        return { success: true, info: 'Email simulé (développement)' };
+      const result = await transporter.sendMail(mailOptions);
+      
+      if (attempt > 1) {
+        console.log(`✅ Email envoyé après ${attempt} tentatives`);
+      }
+      
+      return result;
+      
+    } catch (error) {
+      console.error(`❌ Tentative ${attempt} échouée:`, error.message);
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Pause progressive: 1s, 2s, 3s...
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
-    }
+  }
+};
 
-    /**
-     * Construit un template d'email simple
-     * @param {Object} options - Options du template
-     * @param {string} options.title - Titre de l'email
-     * @param {string} options.content - Contenu de l'email (peut contenir du HTML)
-     * @param {string} options.buttonText - Texte du bouton (optionnel)
-     * @param {string} options.buttonUrl - URL du bouton (optionnel)
-     * @param {string} options.footerText - Texte du pied de page (optionnel)
-     * @returns {string} - Template HTML
-     */
-    export function buildEmailTemplate(options) {
-    const { title, content, buttonText, buttonUrl, footerText } = options;
+// Test de connexion SMTP
+export const testEmailConnection = async () => {
+  console.log('🔧 Test de la connexion SMTP...');
+  
+  try {
+    const transporter = await createEmailTransporter();
+    console.log('✅ Connexion SMTP OK');
     
-    let buttonHtml = '';
-    if (buttonText && buttonUrl) {
-        buttonHtml = `
-        <tr>
-            <td align="center" style="padding: 20px 0;">
-            <a href="${buttonUrl}" target="_blank" style="background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
-                ${buttonText}
-            </a>
-            </td>
-        </tr>
-        `;
-    }
+    return { 
+      success: true, 
+      message: 'Connexion SMTP fonctionnelle',
+      config: {
+        host: SMTP_CONFIG.host,
+        port: SMTP_CONFIG.port,
+        user: SMTP_CONFIG.auth.user
+      }
+    };
     
-    let footerHtml = '';
-    if (footerText) {
-        footerHtml = `
-        <tr>
-            <td style="padding: 20px 0; text-align: center; color: #718096; font-size: 14px; border-top: 1px solid #e2e8f0;">
-            ${footerText}
-            </td>
-        </tr>
-        `;
-    }
+  } catch (error) {
+    console.error('❌ Erreur connexion SMTP:', error);
     
-    return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${title}</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #4a5568; margin: 0; padding: 0;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <tr>
-            <td style="padding: 20px 0; text-align: center;">
-                <h1 style="color: #2d3748; margin: 0;">${title}</h1>
-            </td>
-            </tr>
-            <tr>
-            <td style="padding: 20px 0;">
-                ${content}
-            </td>
-            </tr>
-            ${buttonHtml}
-            ${footerHtml}
-        </table>
-        </body>
-        </html>
-    `;
-    }
+    return {
+      success: false,
+      error: error.message,
+      message: 'Impossible de se connecter au serveur SMTP'
+    };
+  }
+};
+
+// Fonction utilitaire pour un email simple (sans template spécialisé)
+export const sendSimpleEmail = async (to, subject, content, options = {}) => {
+  return await sendTemplatedEmail({
+    to,
+    subject,
+    content,
+    headerTitle: options.headerTitle || subject,
+    headerOptions: options.headerOptions || {},
+    footerOptions: options.footerOptions || {},
+    from: options.from
+  }, options.maxRetries || 3);
+};
+
+// Export pour compatibilité avec l'ancien système (transition)
+export const sendEmail = async (mailOptions, maxRetries = 3) => {
+  // Mode compatibilité - si c'est l'ancien format
+  if (mailOptions.html) {
+    return await sendSimpleEmail(
+      mailOptions.to,
+      mailOptions.subject,
+      mailOptions.html,
+      { from: mailOptions.from, maxRetries }
+    );
+  }
+  
+  // Sinon, utiliser le nouveau système
+  return await sendTemplatedEmail(mailOptions, maxRetries);
+};

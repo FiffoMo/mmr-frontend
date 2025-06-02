@@ -10,13 +10,14 @@
 
     <!-- Publicité en haut de la page d'accueil -->
     <div class="my-4 mt-10">
-      <PubliciteRotative 
-        emplacement="HOME_TOP"
-        :width="1030"
-        :height="200"
-        :show-label="true"
-        :rotation-duration="5000"
-      />
+      <!-- Publicité supérieure (1030x200) -->
+        <PubliciteRotative
+          emplacement="home_top" 
+          :width="1030" 
+          :height="200"
+          :show-label="true"
+          :fallback-content="topAdFallback"
+        />
     </div>
 
     <!-- Présentation du concept MMR -->
@@ -30,7 +31,7 @@
       </div>
       
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
-        <div class="text-center p-6 bg-white rounded-lg shadow-md">
+        <div class="text-center p-6 bg-slate-100 rounded-lg shadow-md">
           <div class="bg-cyan-100 text-amber-800 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
@@ -43,7 +44,7 @@
           </p>
         </div>
         
-        <div class="text-center p-6 bg-white rounded-lg shadow-md">
+        <div class="text-center p-6 bg-slate-100 rounded-lg shadow-md">
           <div class="bg-cyan-100 text-amber-800 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -55,7 +56,7 @@
           </p>
         </div>
         
-        <div class="text-center p-6 bg-white rounded-lg shadow-md">
+        <div class="text-center p-6 bg-slate-100 rounded-lg shadow-md">
           <div class="bg-cyan-100 text-amber-800 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
@@ -86,13 +87,13 @@
 
     <!-- Publicité en bas de la page d'accueil -->
     <div class="my-4 mt-10">
-      <PubliciteRotative 
-        emplacement="HOME_FOOTER"
-        :width="1030"
-        :height="200"
-        :show-label="true"
-        :rotation-duration="5000"
-      />
+      <PubliciteRotative
+          emplacement="home_footer" 
+          :width="1030" 
+          :height="200"
+          :show-label="true"
+          :fallback-content="topAdFallback"
+        />
     </div>
 
     <!-- Alertes email - Nouvelle section -->
@@ -127,4 +128,21 @@ import PricingSection from '~/components/home/PricingSection.vue';
 import AlerteEmailTrigger from '~/components/alertes/AlerteEmailTrigger.vue';
 import TemoignageClient from '~/components/home/TemoignageClient.vue';
 import PubliciteRotative from '~/components/publicites/PubliciteRotative.vue';
+import { ref } from 'vue';
+
+const topAdFallback = ref(`
+  <div class="bg-cyan-500 text-white rounded-lg overflow-hidden relative w-full h-full">
+    <div class="w-full h-full bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center">
+      <div class="text-center p-4">
+        <div class="text-2xl font-bold mb-2">VOTRE PUB ICI</div>
+        <div class="text-sm">Donnez du poids à votre communication
+          <br><br><br>
+          Annonce HOME TOP<br>
+          Format 1030 x 2000</div>
+        </div>
+      </div>
+    </div>
+  </div>  
+`);
+
 </script>

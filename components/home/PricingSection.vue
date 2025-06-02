@@ -1,6 +1,6 @@
 <!-- components/home/PricingSection.vue -->
 <template>
-  <section class="py-16 bg-gray-200">
+  <section class="py-16 bg-slate-200">
     <div class="container mx-auto px-4">
       <div class="text-center mb-12">
         <h2 class="text-3xl font-bold mb-4">Nos forfaits</h2>
@@ -66,15 +66,15 @@
           
           <!-- Bouton en bas de la carte - MODIFICATION ICI -->
           <div class="px-6 pb-6 mt-auto">
-            <NuxtLink
-              :to="forfait.lien_achat || `/acheter-forfait/${forfait.id}`"
+            <button
+              @click="handleForfaitSelection(forfait)"
               class="block w-full text-center py-3 px-4 rounded-md font-medium transition-colors"
               :class="forfait.nom && forfait.nom.toLowerCase().includes('dixit') 
                 ? 'bg-amber-500 hover:bg-amber-600 text-white' 
                 : 'bg-cyan-500 hover:bg-cyan-600 text-white'"
             >
               Choisir ce forfait
-            </NuxtLink>
+            </button>
           </div>
         </div>
       </div>
@@ -92,12 +92,34 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useDirectusSDK } from '~/composables/useDirectusSDK';
+import { useAuthStore } from '~/stores/useAuthStore';
 
 const directusSDK = useDirectusSDK();
+const authStore = useAuthStore();
+const router = useRouter();
 const forfaits = ref([]);
 const loading = ref(true);
 const error = ref(null);
 const debugInfo = ref('');
+
+// Fonction pour gérer la sélection d'un forfait
+const handleForfaitSelection = (forfait) => {
+  // Vérifier si l'utilisateur est connecté
+  if (authStore.isAuthenticated) {
+    // Utilisateur connecté, rediriger vers la page d'achat
+    router.push(forfait.lien_achat || `/acheter-forfait/${forfait.id}`);
+  } else {
+    // Utilisateur non connecté, rediriger vers la page de connexion
+    router.push({
+      path: '/login',
+      query: { 
+        redirect: forfait.lien_achat || `/acheter-forfait/${forfait.id}`,
+        source: 'pricing',
+        productId: forfait.id
+      }
+    });
+  }
+};
 
 onMounted(async () => {
   // Configuration du timeout

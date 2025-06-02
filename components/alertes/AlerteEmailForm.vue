@@ -1,3 +1,4 @@
+<!-- Formulaire complet d'alerte email avec tous les champ. Affiché sur la droite de la page - AlerteEmailTrigger gère l'ouverture du côté  -->
 <template>
   <div class="max-w-5xl mx-auto bg-white rounded-lg shadow-md p-6">
     <div class="flex items-start mb-4">
@@ -12,19 +13,27 @@
       </div>
     </div>
     
-    <form @submit.prevent="submitForm" class="space-y-4">
-      <div>
-        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Votre email</label>
-        <input
-          id="email"
-          v-model="formData.email"
-          type="email"
-          required
-          placeholder="exemple@domaine.com"
-          class="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
-        />
+    <!-- Message de connexion requis -->
+    <div v-if="!isAuthenticated" class="mb-4 p-3 bg-amber-50 text-amber-800 rounded-md">
+      <div class="flex">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+        </svg>
+        <div>
+          <p class="font-medium">Vous devez être connecté pour créer une alerte.</p>
+          <div class="mt-2">
+            <NuxtLink to="/login" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-amber-700 bg-amber-100 hover:bg-amber-200 focus:outline-none mr-2">
+              Se connecter
+            </NuxtLink>
+            <NuxtLink to="/register" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-cyan-700 bg-cyan-100 hover:bg-cyan-200 focus:outline-none">
+              Créer un compte
+            </NuxtLink>
+          </div>
+        </div>
       </div>
-      
+    </div>
+    
+    <form v-if="isAuthenticated" @submit.prevent="submitForm" class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Type de bien</label>
         <div class="grid grid-cols-2 gap-2">
@@ -85,6 +94,23 @@
         </div>
       </div>
       
+      <!-- Chambres minimum -->
+      <div>
+        <label for="chambresMin" class="block text-sm font-medium text-gray-700 mb-1">Chambres minimum</label>
+        <select
+          id="chambresMin"
+          v-model="formData.chambresMin"
+          class="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+        >
+          <option value="">Non précisé</option>
+          <option value="1">1 chambre</option>
+          <option value="2">2 chambres</option>
+          <option value="3">3 chambres</option>
+          <option value="4">4 chambres</option>
+          <option value="5">5 chambres ou plus</option>
+        </select>
+      </div>
+      
       <div>
         <label for="localisation" class="block text-sm font-medium text-gray-700 mb-1">Localisation</label>
         <input
@@ -96,47 +122,16 @@
         />
       </div>
       
+      <!-- Nom de l'alerte -->
       <div>
-        <label for="rentabiliteMin" class="block text-sm font-medium text-gray-700 mb-1">Rentabilité minimale</label>
-        <select
-          id="rentabiliteMin"
-          v-model="formData.rentabiliteMin"
+        <label for="nom" class="block text-sm font-medium text-gray-700 mb-1">Nom de l'alerte (optionnel)</label>
+        <input
+          id="nom"
+          v-model="formData.nom"
+          type="text"
+          placeholder="Ex: Appartement à Paris"
           class="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
-        >
-          <option value="">Non précisé</option>
-          <option value="3">Au moins 3%</option>
-          <option value="4">Au moins 4%</option>
-          <option value="5">Au moins 5%</option>
-          <option value="6">Au moins 6%</option>
-          <option value="7">Au moins 7%</option>
-          <option value="8">Au moins 8%</option>
-        </select>
-      </div>
-      
-      <div class="flex items-center">
-        <input
-          id="frequence"
-          v-model="formData.frequenceQuotidienne"
-          type="checkbox"
-          class="h-4 w-4 text-cyan-500 focus:ring-cyan-400 rounded"
         />
-        <label for="frequence" class="ml-2 text-sm text-gray-700">
-          Je souhaite recevoir une alerte quotidienne (sinon hebdomadaire)
-        </label>
-      </div>
-      
-      <!-- Ajout du champ de confidentialité -->
-      <div class="flex items-center">
-        <input
-          id="confidentialite"
-          v-model="formData.acceptConfidentialite"
-          type="checkbox"
-          required
-          class="h-4 w-4 text-cyan-500 focus:ring-cyan-400 rounded"
-        />
-        <label for="confidentialite" class="ml-2 text-sm text-gray-700">
-          J'accepte de recevoir des alertes email et j'ai lu la <a href="/confidentialite" class="text-amber-800 hover:underline">politique de confidentialité</a>*
-        </label>
       </div>
       
       <div class="pt-2">
@@ -153,9 +148,9 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            Inscription en cours...
+            Création en cours...
           </span>
-          <span v-else>Créer mon alerte email</span>
+          <span v-else>Créer mon alerte</span>
         </button>
       </div>
     </form>
@@ -166,7 +161,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
         </svg>
-        <p>Votre alerte a bien été créée ! Vous recevrez un email de confirmation.</p>
+        <div>
+          <p>Votre alerte a bien été créée !</p>
+          <p class="text-sm mt-1">Vous la retrouverez dans votre espace personnel, onglet "Mes alertes".</p>
+        </div>
       </div>
     </div>
     
@@ -183,7 +181,15 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
+import { useAuthStore } from '~/stores/useAuthStore';
+import { useDirectusSDK } from '~/composables/useDirectusSDK';
+
+const authStore = useAuthStore();
+const directusSDK = useDirectusSDK();
+
+const isAuthenticated = computed(() => authStore.isAuthenticated);
+const userId = computed(() => authStore.clientId);
 
 const typeOptions = [
   { label: 'Appartement', value: 'APPARTEMENT' },
@@ -194,14 +200,12 @@ const typeOptions = [
 ];
 
 const formData = reactive({
-  email: '',
+  nom: '',
   types: [],
   prixMax: '',
   surfaceMin: '',
+  chambresMin: '',
   localisation: '',
-  rentabiliteMin: '',
-  frequenceQuotidienne: false,
-  acceptConfidentialite: false // Ajout du champ manquant
 });
 
 const isSubmitting = ref(false);
@@ -209,8 +213,15 @@ const showConfirmation = ref(false);
 const errorMessage = ref('');
 
 const submitForm = async () => {
-  if (!formData.acceptConfidentialite) {
-    errorMessage.value = 'Vous devez accepter la politique de confidentialité pour créer une alerte.';
+  // Vérifier que l'utilisateur est connecté
+  if (!isAuthenticated.value) {
+    errorMessage.value = 'Vous devez être connecté pour créer une alerte.';
+    return;
+  }
+
+  // Vérifier que l'email utilisateur est disponible
+  if (!authStore.user?.email) {
+    errorMessage.value = 'Email utilisateur non disponible. Veuillez vous reconnecter.';
     return;
   }
 
@@ -218,32 +229,44 @@ const submitForm = async () => {
   errorMessage.value = '';
   
   try {
-    // Appel via notre nouveau proxy Directus
-    const response = await $fetch('/api/directus/items/alertes_email', {
-      method: 'POST',
-      body: {
-        email: formData.email,
-        types: formData.types,
-        prix_max: formData.prixMax ? parseInt(formData.prixMax) : null,
-        surface_min: formData.surfaceMin ? parseInt(formData.surfaceMin) : null,
-        localisation: formData.localisation,
-        rentabilite_min: formData.rentabiliteMin ? parseFloat(formData.rentabiliteMin) : null,
-        frequence_quotidienne: formData.frequenceQuotidienne,
-        accept_confidentialite: formData.acceptConfidentialite,
-        token_confirmation: crypto.randomUUID(), // Générer un token unique
-        status: 'inactive'
-      }
+    // Générer un nom si non fourni
+    const alertNom = formData.nom || generateAlertName();
+    
+    // Créer l'objet de critères pour la recherche
+    const criteres = {
+      types: formData.types,
+      prix_max: formData.prixMax ? parseFloat(formData.prixMax) : null,
+      surface_min: formData.surfaceMin ? parseFloat(formData.surfaceMin) : null,
+      chambres_min: formData.chambresMin ? parseInt(formData.chambresMin) : null,
+      localisation: formData.localisation
+    };
+    
+    console.log('💾 Création alerte avec email:', authStore.user.email);
+    
+    // Appel via le SDK pour créer dans recherches_sauvegardees
+    const response = await directusSDK.createItem('recherches_sauvegardees', {
+      client_id: userId.value,         // ID de l'utilisateur connecté
+      email: authStore.user.email,  // ← AJOUT DE L'EMAIL
+      utilisateur: userId.value,       // Pour compatibilité
+      nom: alertNom,                   // Nom de l'alerte
+      type_bien: formData.types[0] || null,  // Premier type sélectionné
+      localisation: formData.localisation,
+      prix_max: formData.prixMax ? parseFloat(formData.prixMax) : null,
+      surface_min: formData.surfaceMin ? parseFloat(formData.surfaceMin) : null,
+      chambres_min: formData.chambresMin ? parseInt(formData.chambresMin) : null,
+      criteres_supplementaires: JSON.stringify(criteres), // Autres critères en JSON
+      notifications_actives: true
     });
     
+    console.log('✅ Alerte créée avec succès:', response);
+    
     // Réinitialiser le formulaire
-    formData.email = '';
+    formData.nom = '';
     formData.types = [];
     formData.prixMax = '';
     formData.surfaceMin = '';
+    formData.chambresMin = '';
     formData.localisation = '';
-    formData.rentabiliteMin = '';
-    formData.frequenceQuotidienne = false;
-    formData.acceptConfidentialite = false;
     
     // Afficher le message de confirmation
     showConfirmation.value = true;
@@ -253,9 +276,33 @@ const submitForm = async () => {
     
   } catch (error) {
     console.error('Erreur lors de la création de l\'alerte:', error);
-    errorMessage.value = error.data?.error || 'Une erreur est survenue. Veuillez réessayer.';
+    errorMessage.value = error.message || 'Une erreur est survenue. Veuillez réessayer.';
   } finally {
     isSubmitting.value = false;
   }
+};
+
+// Fonction pour générer un nom d'alerte basé sur les critères
+const generateAlertName = () => {
+  let name = '';
+  
+  // Ajouter le type de bien
+  if (formData.types.length > 0) {
+    name += formData.types[0].charAt(0) + formData.types[0].slice(1).toLowerCase();
+  } else {
+    name += 'Bien immobilier';
+  }
+  
+  // Ajouter la localisation
+  if (formData.localisation) {
+    name += ` à ${formData.localisation}`;
+  }
+  
+  // Ajouter le prix si spécifié
+  if (formData.prixMax) {
+    name += ` (max ${parseInt(formData.prixMax).toLocaleString('fr-FR')} €)`;
+  }
+  
+  return name;
 };
 </script>

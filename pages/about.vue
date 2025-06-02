@@ -24,7 +24,7 @@
       </div>
   
       <!-- Values section -->
-      <div class="bg-gray-50 rounded-lg p-8 mb-16">
+      <div class="bg-slate-100 rounded-lg p-8 mb-16">
         <div class="lg:grid lg:grid-cols-2 lg:gap-8">
           <div>
             <h2 class="text-3xl font-extrabold text-gray-900">
@@ -87,7 +87,7 @@
       </div>
   
       <!-- Team section -->
-      <div class="bg-gray-50 rounded-lg p-8 mb-16">
+      <div class="bg-slate-100 rounded-lg p-8 mb-16">
         <div class="text-center">
           <h2 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Notre équipe</h2>
           <p class="mt-3 max-w-2xl mx-auto text-xl text-gray-500">
@@ -95,33 +95,12 @@
           </p>
         </div>
         <div class="mt-12 max-w-lg mx-auto grid gap-5 lg:grid-cols-3 lg:max-w-none">
+                    
           <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="p-6">
               <div class="flex items-center">
-                <div class="h-20 w-20 rounded-full bg-cyan-100 flex items-center justify-center">
-                  <span class="text-xl font-bold text-cyan-600">PM</span>
-                </div>
-                <div class="ml-4">
-                  <h3 class="text-lg font-medium text-gray-900">Philippe Morselli</h3>
-                  <p class="text-sm text-cyan-600">Directeur administratif MMR</p>
-                  <p class="text-sm text-gray-500">Développeur web et Graphiste</p>
-                </div>
-              </div>
-              <div class="mt-4 flex justify-end">
-                <a href="#" class="text-gray-400 hover:text-cyan-500">
-                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path fill-rule="evenodd" d="M16.338 16.338H13.67V12.16c0-.995-.017-2.277-1.387-2.277-1.39 0-1.601 1.086-1.601 2.207v4.248H8.014v-8.59h2.559v1.174h.037c.356-.675 1.227-1.387 2.526-1.387 2.703 0 3.203 1.778 3.203 4.092v4.711zM5.005 6.575a1.548 1.548 0 11-.003-3.096 1.548 1.548 0 01.003 3.096zm-1.337 9.763H6.34v-8.59H3.667v8.59zM17.668 1H2.328C1.595 1 1 1.581 1 2.298v15.403C1 18.418 1.595 19 2.328 19h15.34c.734 0 1.332-.582 1.332-1.299V2.298C19 1.581 18.402 1 17.668 1z" clip-rule="evenodd" />
-                  </svg>
-                </a>
-              </div>
-            </div>
-          </div>
-          
-          <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-6">
-              <div class="flex items-center">
-                <div class="h-20 w-20 rounded-full bg-cyan-100 flex items-center justify-center">
-                  <span class="text-xl font-bold text-cyan-600">YC</span>
+                <div class="h-20 w-20 rounded-full bg-cyan-500 flex items-center justify-center">
+                  <span class="text-xl font-bold text-white">YC</span>
                 </div>
                 <div class="ml-4">
                   <h3 class="text-lg font-medium text-gray-900">Yann Casanova</h3>
@@ -142,13 +121,35 @@
           <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="p-6">
               <div class="flex items-center">
-                <div class="h-20 w-20 rounded-full bg-cyan-100 flex items-center justify-center">
-                  <span class="text-xl font-bold text-cyan-600">RC</span>
+                <div class="h-20 w-20 rounded-full bg-cyan-500 flex items-center justify-center">
+                  <span class="text-xl font-bold text-white">RC</span>
                 </div>
                 <div class="ml-4">
                   <h3 class="text-lg font-medium text-gray-900">Ruth Casanova</h3>
                   <p class="text-sm text-cyan-600">Directrice de la communication MMR</p>
                   <p class="text-sm text-gray-500">Community Manager</p>
+                </div>
+              </div>
+              <div class="mt-4 flex justify-end">
+                <a href="#" class="text-gray-400 hover:text-cyan-500">
+                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path fill-rule="evenodd" d="M16.338 16.338H13.67V12.16c0-.995-.017-2.277-1.387-2.277-1.39 0-1.601 1.086-1.601 2.207v4.248H8.014v-8.59h2.559v1.174h.037c.356-.675 1.227-1.387 2.526-1.387 2.703 0 3.203 1.778 3.203 4.092v4.711zM5.005 6.575a1.548 1.548 0 11-.003-3.096 1.548 1.548 0 01.003 3.096zm-1.337 9.763H6.34v-8.59H3.667v8.59zM17.668 1H2.328C1.595 1 1 1.581 1 2.298v15.403C1 18.418 1.595 19 2.328 19h15.34c.734 0 1.332-.582 1.332-1.299V2.298C19 1.581 18.402 1 17.668 1z" clip-rule="evenodd" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-6">
+              <div class="flex items-center">
+                <div class="h-20 w-20 rounded-full bg-cyan-500 flex items-center justify-center">
+                  <span class="text-xl font-bold text-white">PM</span>
+                </div>
+                <div class="ml-4">
+                  <h3 class="text-lg font-medium text-gray-900">Philippe Morselli</h3>
+                  <p class="text-sm text-cyan-600">Directeur administratif MMR</p>
+                  <p class="text-sm text-gray-500">Développeur web et Graphiste</p>
                 </div>
               </div>
               <div class="mt-4 flex justify-end">

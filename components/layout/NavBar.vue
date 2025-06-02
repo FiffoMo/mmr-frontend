@@ -37,7 +37,7 @@
           
           <span class="text-gray-300">|</span>
           
-          <NuxtLink to="/articles" class="text-gray-700 hover:text-cyan-600">Articles utiles</NuxtLink>
+          <NuxtLink to="/articles" class="text-gray-700 hover:text-cyan-600">BLOG & NEWS</NuxtLink>
 
           <span class="text-gray-300">|</span>
                     
@@ -57,8 +57,8 @@
               class="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md py-1 z-10"
               @mouseleave="isServicesDropdownOpen = false"
             >
-              <NuxtLink to="/tarifs" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Tarifs</NuxtLink>
-              <NuxtLink to="/publicite" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Pub</NuxtLink>
+              <NuxtLink to="/tarifs" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50"><strong>Annonces Tarifs</strong></NuxtLink>
+              <NuxtLink to="/tarifs-publicite" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50"><strong>Publicité - Tarifs</strong></NuxtLink>
               <NuxtLink to="/about" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">A propos</NuxtLink>
               <NuxtLink to="/faq" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">FAQ</NuxtLink>
               <!-- <NuxtLink to="/testimonials" class="block px-4 py-2 text-gray-700 hover:bg-cyan-50">Témoignages</NuxtLink> -->

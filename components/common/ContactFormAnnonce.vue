@@ -163,17 +163,21 @@ const submitForm = async () => {
       contenu: form.value.message,
       email_expediteur: form.value.email,
       nom_expediteur: form.value.name,
-      type: 'externe' // Message provenant d'un visiteur
+      type: 'externe',
+      expediteur: 'visiteur' // AJOUTER CETTE LIGNE
     });
     
     // 3. Envoyer une requête pour l'envoi des emails
-    await directusSDK.post('/api/email-contact', {
-      emailVisiteur: form.value.email,
-      nomVisiteur: form.value.name,
-      telephone: form.value.phone || 'Non renseigné',
-      annonceId: props.annonceId,
-      message: form.value.message,
-      annonceTitle: props.annonceTitle
+    await $fetch('/api/email-contact', {
+      method: 'POST',
+      body: {
+        emailVisiteur: form.value.email,
+        nomVisiteur: form.value.name,
+        telephone: form.value.phone || 'Non renseigné',
+        annonceId: props.annonceId,
+        message: form.value.message,
+        annonceTitle: props.annonceTitle
+      }
     });
     
     // Afficher le message de succès

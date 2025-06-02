@@ -114,6 +114,7 @@ export const useDirectusSDK = () => {
     return apiCall(`/items/${collection}/${id}${queryString}`);
   };
   
+  
   /**
    * Créer un nouvel élément
    * @param {string} collection - Nom de la collection
@@ -121,6 +122,16 @@ export const useDirectusSDK = () => {
    * @returns {Promise} - Élément créé
    */
   const createItem = async (collection, data) => {
+    // Vérifier si c'est une collection qui utilise utilisateur et non client_id
+    if ((collection === 'favoris' || collection === 'recherches_sauvegardees') && data.client_id && !data.utilisateur) {
+      // Ajouter le champ utilisateur avec la même valeur que client_id
+      console.log(`Ajout du champ utilisateur pour la collection ${collection}`);
+      data = {
+        ...data,
+        utilisateur: data.client_id
+      };
+    }
+    
     return apiCall(`/items/${collection}`, {
       method: 'POST',
       headers: {

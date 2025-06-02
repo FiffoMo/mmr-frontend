@@ -74,14 +74,30 @@ export default defineEventHandler(async (event) => {
     if (['POST', 'PUT', 'PATCH'].includes(event.method)) {
       const body = await readBody(event);
       
+      // Vérifier si c'est un upload de fichier (route /files et content-type multipart/form-data)
+      const contentType = event.req.headers['content-type'] || '';
+      const isFileUpload = segments === 'files' && contentType.includes('multipart/form-data');
+      
       // Log pour le débogage
       console.log('Corps de la requête:', {
         bodyType: typeof body,
-        body,
+        isFileUpload: isFileUpload,
+        contentType: contentType,
+        body: isFileUpload ? 'File data (binary)' : body,
         hasEmail: body && typeof body === 'object' && 'email' in body
       });
       
-      requestOptions.body = JSON.stringify(body);
+      if (isFileUpload) {
+        // Pour les uploads de fichiers, utiliser un FormData directement
+        // et supprimer le Content-Type pour laisser le navigateur le définir avec le boundary
+        delete requestOptions.headers['Content-Type'];
+        
+        // Transmettre le body tel quel sans conversion en JSON
+        requestOptions.body = body;
+      } else {
+        // Pour toutes les autres requêtes, convertir en JSON comme avant
+        requestOptions.body = JSON.stringify(body);
+      }
     }
     
     console.log('Proxy Directus - Requête complète:', directusRequestUrl, requestOptions);

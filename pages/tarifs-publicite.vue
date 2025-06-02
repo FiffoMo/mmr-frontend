@@ -66,14 +66,15 @@
           <!-- Bloc d'affichage d'image -->
           <div class="relative h-48 bg-gray-100">
               <template v-if="pub.image">
-                  <!-- Ne pas utiliser @error pour éviter la boucle -->
-                  <img 
-                    v-if="pub.image"
-                    :src="`/uploads/${pub.image}.png`" 
-                    :alt="pub.nom"
-                    class="w-full h-full object-cover"
-                    onerror="this.onerror=null; this.src='/placeholder.jpg';"
-                  />
+                <NuxtLink 
+                  :to="`/acheter-forfait/${pub.id}`">
+                    <img 
+                      :src="getImageUrl(pub.image)" 
+                      :alt="pub.nom"
+                      class="w-full h-full object-cover"
+                      @error="handleImageError"
+                    />
+                </NuxtLink>  
               </template>
               <div v-else class="flex items-center justify-center h-full bg-cyan-50">
                   <div class="text-center p-4">
@@ -130,7 +131,7 @@
           
           <div class="p-5 pt-0 mt-auto">
             <NuxtLink 
-              to="/contact?sujet=publicite"
+              :to="`/acheter-forfait/${pub.id}`"
               class="block w-full py-2 px-4 bg-cyan-500 text-white text-center rounded hover:bg-cyan-600 transition-colors"
             >
               Réserver cet espace
@@ -163,21 +164,21 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           <!-- Étape 1 -->
           <div class="bg-white rounded-lg shadow-md p-6 text-center">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-cyan-100 text-cyan-600 text-xl font-bold mb-4">1</div>
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-400 text-white text-xl font-bold mb-4">1</div>
             <h3 class="text-lg font-semibold mb-2">Choisissez votre emplacement</h3>
             <p class="text-gray-600">Sélectionnez l'emplacement qui correspond le mieux à vos objectifs et à votre budget.</p>
           </div>
           
           <!-- Étape 2 -->
           <div class="bg-white rounded-lg shadow-md p-6 text-center">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-cyan-100 text-cyan-600 text-xl font-bold mb-4">2</div>
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-400 text-white text-xl font-bold mb-4">2</div>
             <h3 class="text-lg font-semibold mb-2">Fournissez votre visuel</h3>
             <p class="text-gray-600">Envoyez-nous votre bannière publicitaire aux dimensions requises et votre URL de destination.</p>
           </div>
           
           <!-- Étape 3 -->
           <div class="bg-white rounded-lg shadow-md p-6 text-center">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-cyan-100 text-cyan-600 text-xl font-bold mb-4">3</div>
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-400 text-white text-xl font-bold mb-4">3</div>
             <h3 class="text-lg font-semibold mb-2">Suivez vos performances</h3>
             <p class="text-gray-600">Accédez à votre tableau de bord pour suivre les performances de votre campagne en temps réel.</p>
           </div>
@@ -207,7 +208,7 @@
         
         <div class="bg-white rounded-lg shadow p-5">
           <h3 class="text-lg font-semibold mb-2">Proposez-vous des remises pour les campagnes longue durée ?</h3>
-          <p class="text-gray-600">Oui, nous proposons des tarifs dégressifs pour les campagnes de plus de 3 mois. Contactez-nous pour obtenir un devis personnalisé.</p>
+          <p class="text-gray-600">Oui, nous proposons des tarifs dégressifs pour les campagnes de plus de 90 jours. <a href="/contact" class="text-cyan-600 hover:text-cyan-700 font-black">Contactez-nous pour obtenir un devis personnalisé.</a></p>
         </div>
       </div>
     </div>
@@ -223,39 +224,39 @@ const publicites = ref([]);
 
 // Format price to 2 decimal places
 const formatPrice = (price) => {
-return typeof price === 'number' ? price.toFixed(2) : '0.00';
+  return typeof price === 'number' ? price.toFixed(2) : '0.00';
 };
 
 // Obtenir les dimensions de la bannière en fonction de l'emplacement
 const getDimensions = (emplacement) => {
-const dimensions = {
-  'home_top': '980×250',
-  'home_footer': '980×120',
-  'inside_footer': '980×120',
-  'article_right_top': '300×250',
-  'article_right_bottom': '300×250',
-  'annonce_sidebar_top': '300×250',
-  'annonce_sidebar_bottom': '300×600'
-};
+  const dimensions = {
+    'home_top': '980×250',
+    'home_footer': '980×120',
+    'inside_footer': '980×120',
+    'article_right_top': '300×250',
+    'article_right_bottom': '300×250',
+    'annonce_sidebar_top': '300×250',
+    'annonce_sidebar_bottom': '300×600'
+  };
 
-const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
-return dimensions[emplacementKey] || '300×250';
+  const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
+  return dimensions[emplacementKey] || '300×250';
 };
 
 // Obtenir le nom convivial de l'emplacement
 const getLocation = (emplacement) => {
-const locations = {
-  'home_top': 'Accueil (Haut)',
-  'home_footer': 'Accueil (Bas)',
-  'inside_footer': 'Pied de page',
-  'article_right_top': 'Article (Côté Haut)',
-  'article_right_bottom': 'Article (Côté Bas)',
-  'annonce_sidebar_top': 'Annonces (Sidebar Haut)',
-  'annonce_sidebar_bottom': 'Annonces (Sidebar Bas)'
-};
+  const locations = {
+    'home_top': 'Accueil (Haut)',
+    'home_footer': 'Accueil (Bas)',
+    'inside_footer': 'Pied de page',
+    'article_right_top': 'Article (Côté Haut)',
+    'article_right_bottom': 'Article (Côté Bas)',
+    'annonce_sidebar_top': 'Annonces (Sidebar Haut)',
+    'annonce_sidebar_bottom': 'Annonces (Sidebar Bas)'
+  };
 
-const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
-return locations[emplacementKey] || emplacement || 'Emplacement';
+  const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
+  return locations[emplacementKey] || emplacement || 'Emplacement';
 };
 
 // Nettoyer et formater la description sans supprimer le HTML
@@ -270,155 +271,217 @@ const getFormattedDescription = (pub) => {
 
 // Obtenir une description par défaut si aucune n'est fournie
 const getDefaultDescription = (emplacement) => {
-const descriptions = {
-  'home_top': 'Emplacement premium en haut de la page d\'accueil, visible par tous les visiteurs du site.',
-  'home_footer': 'Bannière en bas de la page d\'accueil, idéal pour augmenter votre visibilité.',
-  'inside_footer': 'Présent sur toutes les pages intérieures du site, pour une exposition régulière.',
-  'article_right_top': 'Situé en haut de la colonne latérale des pages d\'article, attirant l\'attention des lecteurs.',
-  'article_right_bottom': 'Placé en bas de la colonne latérale des articles, pour une visibilité prolongée.',
-  'annonce_sidebar_top': 'En haut de la barre latérale des pages d\'annonces, ciblant les acheteurs potentiels.',
-  'annonce_sidebar_bottom': 'Grand format en bas de la barre latérale des annonces pour un impact maximal.'
-};
+  const descriptions = {
+    'home_top': 'Emplacement premium en haut de la page d\'accueil, visible par tous les visiteurs du site.',
+    'home_footer': 'Bannière en bas de la page d\'accueil, idéal pour augmenter votre visibilité.',
+    'inside_footer': 'Présent sur toutes les pages intérieures du site, pour une exposition régulière.',
+    'article_right_top': 'Situé en haut de la colonne latérale des pages d\'article, attirant l\'attention des lecteurs.',
+    'article_right_bottom': 'Placé en bas de la colonne latérale des articles, pour une visibilité prolongée.',
+    'annonce_sidebar_top': 'En haut de la barre latérale des pages d\'annonces, ciblant les acheteurs potentiels.',
+    'annonce_sidebar_bottom': 'Grand format en bas de la barre latérale des annonces pour un impact maximal.'
+  };
 
-const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
-return descriptions[emplacementKey] || 'Emplacement publicitaire stratégique pour promouvoir votre marque auprès d\'investisseurs immobiliers.';
+  const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
+  return descriptions[emplacementKey] || 'Emplacement publicitaire stratégique pour promouvoir votre marque auprès d\'investisseurs immobiliers.';
 };
 
 // Obtenir une estimation des impressions
 const getImpressions = (emplacement) => {
-const impressions = {
-  'home_top': '20 000',
-  'home_footer': '18 000',
-  'inside_footer': '15 000',
-  'article_right_top': '12 000',
-  'article_right_bottom': '10 000',
-  'annonce_sidebar_top': '9 000',
-  'annonce_sidebar_bottom': '8 500'
-};
+  const impressions = {
+    'home_top': '790',
+    'home_footer': '590',
+    'inside_footer': '390',
+    'article_right_top': '278',
+    'article_right_bottom': '298',
+    'annonce_sidebar_top': '310',
+    'annonce_sidebar_bottom': '330'
+  };
 
-const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
-return impressions[emplacementKey] || '10 000';
+  const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
+  return impressions[emplacementKey] || '10 000';
 };
 
 // Obtenir une estimation du taux de clic
 const getCTR = (emplacement) => {
-const ctrs = {
-  'home_top': '2.8',
-  'home_footer': '1.9',
-  'inside_footer': '1.6',
-  'article_right_top': '2.2',
-  'article_right_bottom': '1.8',
-  'annonce_sidebar_top': '2.4',
-  'annonce_sidebar_bottom': '2.1'
+  const ctrs = {
+    'home_top': '2.8',
+    'home_footer': '1.9',
+    'inside_footer': '1.6',
+    'article_right_top': '2.2',
+    'article_right_bottom': '1.8',
+    'annonce_sidebar_top': '2.4',
+    'annonce_sidebar_bottom': '2.1'
+  };
+
+  const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
+  return ctrs[emplacementKey] || '2.0';
 };
 
-const emplacementKey = emplacement?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || '';
-return ctrs[emplacementKey] || '2.0';
-};
-
-// Gérer les erreurs de chargement d'image
-const handleImageError = (event) => {
-// Essayez différentes extensions si l'image ne se charge pas
-const img = event.target;
-const src = img.src;
-
-if (src.endsWith('.avif')) {
-  // Si l'AVIF échoue, essayez le format d'origine
-  img.src = src.replace('.avif', '');
-} else if (!src.includes('.')) {
-  // Si pas d'extension, essayez .jpg
-  img.src = src + '.jpg';
-} else if (src.endsWith('.jpg')) {
-  // Si JPG échoue, essayez PNG
-  img.src = src.replace('.jpg', '.png');
-} else if (src.endsWith('.png')) {
-  // Si PNG échoue, essayez WebP
-  img.src = src.replace('.png', '.webp');
-} else {
-  // Si tout échoue, affichez une image par défaut
-  img.src = '/placeholder.jpg';
-}
-};
-
-// Vérifier si une version AVIF est disponible
-const hasAvifVersion = (imagePath) => {
-// Dans un environnement de production, vous pourriez implémenter une logique plus complexe
-// Par défaut, nous supposerons que la version AVIF est disponible
-return true;
-};
-
-// Construire l'URL de l'image
+// Fonction améliorée pour construire l'URL de l'image
 const getImageUrl = (imagePath) => {
-if (!imagePath) return '';
+  if (!imagePath) return '';
+  
+  // Vérifier si le chemin contient déjà une extension
+  if (imagePath.match(/\.(jpg|jpeg|png|avif|webp|gif)$/i)) {
+    return `/uploads/${imagePath}`;
+  }
+  
+  // Par défaut, essayer sans extension d'abord (Directus pourrait stocker le nom sans extension)
+  return `/uploads/${imagePath}`;
+};
 
-// Essayez d'abord avec le chemin direct
-return `/uploads/${imagePath}`;
+// Gestion des erreurs d'image améliorée
+const handleImageError = (event) => {
+  const img = event.target;
+  const src = img.src;
+  const baseSrc = src.substring(0, src.lastIndexOf('.') > 0 ? src.lastIndexOf('.') : src.length);
+  
+  // Essayer différentes extensions dans cet ordre
+  const extensions = ['.jpg', '.jpeg', '.png', '.avif', '.webp'];
+  let currentExtIndex = extensions.findIndex(ext => src.toLowerCase().endsWith(ext.toLowerCase()));
+  
+  if (currentExtIndex === -1) {
+    // Si pas d'extension ou extension non reconnue, essayer jpg
+    img.src = `${baseSrc}.jpg`;
+  } else if (currentExtIndex < extensions.length - 1) {
+    // Essayer l'extension suivante dans la liste
+    img.src = `${baseSrc}${extensions[currentExtIndex + 1]}`;
+  } else {
+    // Si toutes les extensions ont été essayées, charger l'image par défaut
+    img.src = '/placeholder.jpg';
+    // Empêcher les boucles infinies
+    img.onerror = null;
+  }
 };
 
 onMounted(async () => {
-try {
-  // Récupérer tous les produits de type publicité
-  const response = await fetch('/api/directus/items/produits?fields=*&filter[status][_eq]=published&filter[type_produit][_eq]=publicite');
-  
-  if (!response.ok) {
-    throw new Error(`Erreur lors de la récupération des produits: ${response.status}`);
-  }
-  
-  const data = await response.json();
-  console.log('Produits publicitaires récupérés:', data);
-  
-  if (data.data && data.data.length > 0) {
-    // Trier les produits par id 
-    publicites.value = data.data.sort((a, b) => a.id - b.id);
-  } else {
-    // Si aucun produit n'est trouvé, créer des exemples de produits
-    console.log('Aucun produit publicitaire trouvé, création d\'exemples');
+  try {
+    // Récupérer tous les produits de type publicité
+    const response = await fetch('/api/directus/items/produits?fields=*&filter[status][_eq]=published&filter[type_produit][_eq]=publicite');
+    
+    if (!response.ok) {
+      throw new Error(`Erreur lors de la récupération des produits: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Produits publicitaires récupérés:', data);
+    
+    if (data.data && data.data.length > 0) {
+      // Trier les produits par id 
+      publicites.value = data.data.sort((a, b) => a.id - b.id);
+    } else {
+      // Si aucun produit n'est trouvé, créer des exemples de produits
+      console.log('Aucun produit publicitaire trouvé, création d\'exemples');
+      publicites.value = [
+        {
+          id: 1,
+          nom: 'Pub HOME TOP',
+          emplacement: 'home_top',
+          prix: 790,
+          duree_jours: 90,
+          description: 'Emplacement premium en haut de la page d\'accueil, visible par tous les visiteurs du site.'
+        },
+        {
+          id: 2,
+          nom: 'Pub HOME FOOTER',
+          emplacement: 'home_footer',
+          prix: 590,
+          duree_jours: 90,
+          description: 'Bannière en bas de la page d\'accueil, idéal pour augmenter votre visibilité.'
+        },
+        {
+          id: 3,
+          nom: 'Pub INSIDE FOOTER',
+          emplacement: 'inside_footer',
+          prix: 390,
+          duree_jours: 90,
+          description: 'Présent sur toutes les pages intérieures du site, pour une exposition régulière.'
+        },
+        {
+          id: 4,
+          nom: 'Pub ARTICLE RIGHT TOP',
+          emplacement: 'article_right_top',
+          prix: 278,
+          duree_jours: 90,
+          description: 'Situé en haut de la colonne latérale des pages d\'article, attirant l\'attention des lecteurs.'
+        },
+        {
+          id: 5,
+          nom: 'Pub ARTICLE RIGHT BOTTOM',
+          emplacement: 'article_right_bottom',
+          prix: 298,
+          duree_jours: 90,
+          description: 'Placé en bas de la colonne latérale des articles, pour une visibilité prolongée.'
+        },
+        {
+          id: 6,
+          nom: 'Pub ANNONCE SIDEBAR TOP',
+          emplacement: 'annonce_sidebar_top',
+          prix: 310,
+          duree_jours: 90,
+          description: 'En haut de la barre latérale des pages d\'annonces, ciblant les acheteurs potentiels.'
+        },
+        {
+          id: 7,
+          nom: 'Pub ANNONCE SIDEBAR BOTTOM',
+          emplacement: 'annonce_sidebar_bottom',
+          prix: 330,
+          duree_jours: 90,
+          description: 'Grand format en bas de la barre latérale des annonces pour un impact maximal.'
+        }
+      ];
+    }
+  } catch (err) {
+    console.error('Erreur complète:', err);
+    error.value = `Impossible de charger les emplacements publicitaires: ${err.message}`;
+    
+    // En cas d'erreur, afficher des exemples de produits
     publicites.value = [
       {
         id: 1,
         nom: 'Pub HOME TOP',
         emplacement: 'home_top',
-        prix: 800,
-        duree_jours: 60,
+        prix: 790,
+        duree_jours: 90,
         description: 'Emplacement premium en haut de la page d\'accueil, visible par tous les visiteurs du site.'
       },
       {
         id: 2,
         nom: 'Pub HOME FOOTER',
         emplacement: 'home_footer',
-        prix: 500,
-        duree_jours: 60,
+        prix: 590,
+        duree_jours: 90,
         description: 'Bannière en bas de la page d\'accueil, idéal pour augmenter votre visibilité.'
       },
       {
         id: 3,
         nom: 'Pub INSIDE FOOTER',
         emplacement: 'inside_footer',
-        prix: 400,
-        duree_jours: 60,
+        prix: 390,
+        duree_jours: 90,
         description: 'Présent sur toutes les pages intérieures du site, pour une exposition régulière.'
       },
       {
         id: 4,
         nom: 'Pub ARTICLE RIGHT TOP',
         emplacement: 'article_right_top',
-        prix: 280,
-        duree_jours: 60,
+        prix: 278,
+        duree_jours: 90,
         description: 'Situé en haut de la colonne latérale des pages d\'article, attirant l\'attention des lecteurs.'
       },
       {
         id: 5,
         nom: 'Pub ARTICLE RIGHT BOTTOM',
         emplacement: 'article_right_bottom',
-        prix: 280,
-        duree_jours: 60,
+        prix: 298,
+        duree_jours: 90,
         description: 'Placé en bas de la colonne latérale des articles, pour une visibilité prolongée.'
       },
       {
         id: 6,
         nom: 'Pub ANNONCE SIDEBAR TOP',
         emplacement: 'annonce_sidebar_top',
-        prix: 230,
+        prix: 310,
         duree_jours: 90,
         description: 'En haut de la barre latérale des pages d\'annonces, ciblant les acheteurs potentiels.'
       },
@@ -426,90 +489,26 @@ try {
         id: 7,
         nom: 'Pub ANNONCE SIDEBAR BOTTOM',
         emplacement: 'annonce_sidebar_bottom',
-        prix: 280,
+        prix: 330,
         duree_jours: 90,
         description: 'Grand format en bas de la barre latérale des annonces pour un impact maximal.'
       }
     ];
+  } finally {
+    loading.value = false;
   }
-} catch (err) {
-  console.error('Erreur complète:', err);
-  error.value = `Impossible de charger les emplacements publicitaires: ${err.message}`;
-  
-  // En cas d'erreur, afficher des exemples de produits
-  publicites.value = [
-    {
-      id: 1,
-      nom: 'Pub HOME TOP',
-      emplacement: 'home_top',
-      prix: 800,
-      duree_jours: 60,
-      description: 'Emplacement premium en haut de la page d\'accueil, visible par tous les visiteurs du site.'
-    },
-    {
-      id: 2,
-      nom: 'Pub HOME FOOTER',
-      emplacement: 'home_footer',
-      prix: 500,
-      duree_jours: 60,
-      description: 'Bannière en bas de la page d\'accueil, idéal pour augmenter votre visibilité.'
-    },
-    {
-      id: 3,
-      nom: 'Pub INSIDE FOOTER',
-      emplacement: 'inside_footer',
-      prix: 400,
-      duree_jours: 60,
-      description: 'Présent sur toutes les pages intérieures du site, pour une exposition régulière.'
-    },
-    {
-      id: 4,
-      nom: 'Pub ARTICLE RIGHT TOP',
-      emplacement: 'article_right_top',
-      prix: 280,
-      duree_jours: 60,
-      description: 'Situé en haut de la colonne latérale des pages d\'article, attirant l\'attention des lecteurs.'
-    },
-    {
-      id: 5,
-      nom: 'Pub ARTICLE RIGHT BOTTOM',
-      emplacement: 'article_right_bottom',
-      prix: 280,
-      duree_jours: 60,
-      description: 'Placé en bas de la colonne latérale des articles, pour une visibilité prolongée.'
-    },
-    {
-      id: 6,
-      nom: 'Pub ANNONCE SIDEBAR TOP',
-      emplacement: 'annonce_sidebar_top',
-      prix: 230,
-      duree_jours: 90,
-      description: 'En haut de la barre latérale des pages d\'annonces, ciblant les acheteurs potentiels.'
-    },
-    {
-      id: 7,
-      nom: 'Pub ANNONCE SIDEBAR BOTTOM',
-      emplacement: 'annonce_sidebar_bottom',
-      prix: 280,
-      duree_jours: 90,
-      description: 'Grand format en bas de la barre latérale des annonces pour un impact maximal.'
-    }
-  ];
-} finally {
-  loading.value = false;
-}
 });
 </script>
 
 <script>
 export default {
-head() {
-  return {
-    title: 'Espaces publicitaires - Ma Maison Rapporte',
-    meta: [
-      { hid: 'description', name: 'description', content: 'Découvrez nos espaces publicitaires pour atteindre une audience ciblée d\'investisseurs et d\'acheteurs immobiliers.' }
-    ]
+  head() {
+    return {
+      title: 'Espaces publicitaires - Ma Maison Rapporte',
+      meta: [
+        { hid: 'description', name: 'description', content: 'Découvrez nos espaces publicitaires pour atteindre une audience ciblée d\'investisseurs et d\'acheteurs immobiliers.' }
+      ]
+    }
   }
-}
 }
 </script>

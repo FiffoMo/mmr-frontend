@@ -240,7 +240,6 @@ export function useAnnonces() {
     loading.value = true;
     error.value = null;
     
-    // Configuration du timeout
     const timeout = setTimeout(() => {
       if (loading.value) {
         loading.value = false;
@@ -250,32 +249,46 @@ export function useAnnonces() {
     }, 5000);
     
     try {
-      // 1. Essayer d'abord avec le SDK
-      const result = await directusSDK.getItem('Annonces', id);
+      // Utiliser client_id au lieu de proprietaire
+      const fieldsString = [
+        '*',
+        'client_id.id',
+        'client_id.first_name',
+        'client_id.last_name',
+        'client_id.email',
+        'client_id.company',
+        'client_id.phone',
+        'client_id.website_url',
+        'client_id.contact_instructions',
+        'client_id.hide_email',
+        'client_id.hide_phone',
+        'client_id.hide_address',
+        'client_id.avatar.id',
+        'client_id.avatar.title',
+        'client_id.avatar.filename_download'
+      ].join(',');
       
-      if (result) {
-        annonceDetail.value = result;
-        return {
-          success: true,
-          annonce: result
-        };
-      }
+      console.log('Récupération avec client_id:', fieldsString);
       
-      // 2. Fallback direct
-      console.log(`Récupération de l'annonce ${id}`);
-      const response = await fetch(`/api/directus/items/Annonces/${id}`);
+      const url = `/api/directus/items/Annonces/${id}?fields=${encodeURIComponent(fieldsString)}`;
+      const response = await fetch(url);
       const data = await response.json();
       
-      console.log("Réponse:", data);
+      console.log("Réponse avec client_id:", data);
       
-      if (response.ok) {
+      if (response.ok && data.data) {
+        // Mapper client_id vers proprietaire pour compatibilité avec le template
+        if (data.data.client_id) {
+          data.data.proprietaire = data.data.client_id;
+        }
+        
         annonceDetail.value = data.data;
         return {
           success: true,
           annonce: data.data
         };
       } else {
-        const errorMsg = data?.errors?.[0]?.message || 'Erreur lors du chargement de l\'annonce';
+        const errorMsg = data?.errors?.[0]?.message || 'Erreur lors du chargement';
         error.value = errorMsg;
         return {
           success: false,
@@ -283,8 +296,8 @@ export function useAnnonces() {
         };
       }
     } catch (err) {
-      console.error(err);
-      error.value = err.message || 'Erreur lors du chargement de l\'annonce';
+      console.error('Erreur:', err);
+      error.value = err.message || 'Erreur lors du chargement';
       return {
         success: false,
         error: err.message
@@ -439,16 +452,22 @@ export function useAnnonces() {
   };
   
   /**
-   * Créer une alerte email (recherche sauvegardée) pour un utilisateur
-   */
-  const saveSearchAlert = async (searchParams, userId) => {
-    if (!userId) {
+ * Créer une alerte email (recherche sauvegardée) pour un utilisateur
+ */
+  const saveSearchAlert = async (searchParams) => {
+    // Récupérer le store d'authentification pour obtenir l'ID utilisateur
+    const authStore = useAuthStore();
+    
+    // Vérifier si l'utilisateur est authentifié
+    if (!authStore.isAuthenticated || !authStore.clientId) {
       error.value = "Vous devez être connecté pour créer une alerte";
       return {
         success: false,
         error: "Vous devez être connecté pour créer une alerte"
       };
     }
+
+    const userId = authStore.clientId;
     
     loading.value = true;
     error.value = null;
@@ -462,17 +481,24 @@ export function useAnnonces() {
     }, 5000);
     
     try {
+      console.log('Création d\'une alerte avec les paramètres:', searchParams);
+      console.log('ID utilisateur:', userId);
+      
       // 1. Essayer d'abord avec le SDK
       const item = {
-        client_id: userId, // Utiliser client_id au lieu de utilisateur
+        client_id: userId,
+        utilisateur: userId, // Ajouter également le champ utilisateur pour compatibilité
         nom: searchParams.nom || "Nouvelle alerte",
         criteres: JSON.stringify(searchParams),
         frequence: searchParams.frequence || "hebdomadaire"
       };
       
+      console.log('Données à envoyer:', item);
+      
       const result = await directusSDK.createItem('recherches_sauvegardees', item);
       
       if (result) {
+        console.log('Alerte créée avec succès:', result);
         return {
           success: true,
           alert: result
@@ -480,13 +506,16 @@ export function useAnnonces() {
       }
       
       // 2. Fallback direct
+      console.log('Tentative avec fetch direct');
       const response = await fetch('/api/directus/items/recherches_sauvegardees', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'credentials': 'include'
         },
         body: JSON.stringify({
-          client_id: userId, // Utiliser client_id au lieu de utilisateur
+          client_id: userId,
+          utilisateur: userId, // Ajouter également le champ utilisateur pour compatibilité
           nom: searchParams.nom || "Nouvelle alerte",
           criteres: JSON.stringify(searchParams),
           frequence: searchParams.frequence || "hebdomadaire"
@@ -496,12 +525,14 @@ export function useAnnonces() {
       const data = await response.json();
       
       if (response.ok) {
+        console.log('Alerte créée avec succès via fetch:', data);
         return {
           success: true,
           alert: data.data
         };
       } else {
         const errorMsg = data?.errors?.[0]?.message || 'Erreur lors de la création de l\'alerte';
+        console.error('Erreur création alerte:', errorMsg);
         error.value = errorMsg;
         return {
           success: false,
@@ -509,6 +540,7 @@ export function useAnnonces() {
         };
       }
     } catch (err) {
+      console.error('Erreur complète lors de la création de l\'alerte:', err);
       error.value = err.message || 'Erreur lors de la création de l\'alerte';
       return {
         success: false,

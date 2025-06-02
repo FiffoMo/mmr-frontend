@@ -3,7 +3,7 @@
     <h2 class="text-2xl font-bold text-gray-900 mb-6">Préférences de notifications</h2>
     
     <!-- Débogage pour le développement -->
-    <div class="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200">
+    <!-- <div class="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200">
       <h3 class="font-bold text-blue-800">Débogage NotificationsTab</h3>
       <p>Loading: {{ loading || directusSDK?.loading }}</p>
       <p>Error: {{ error || directusSDK?.error }}</p>
@@ -12,7 +12,7 @@
       <button @click="fetchNotificationPreferences" class="bg-blue-500 text-white p-2 rounded mt-2">
         Recharger les préférences
       </button>
-    </div>
+    </div> -->
     
     <!-- Message d'erreur - Modifié pour ne s'afficher que s'il y a une vraie erreur -->
     <div v-if="error && error !== null" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
@@ -27,35 +27,21 @@
     </div>
     
     <!-- Formulaire de préférences -->
-    <form v-if="preferencesLoaded" @submit.prevent="savePreferences" class="space-y-8 bg-slate-200 p-6 rounded-lg border border-gray-200 shadow-sm">
+    <form v-if="preferencesLoaded" @submit.prevent="savePreferences" class="space-y-8 bg-slate-100 p-6 rounded-lg border border-gray-200 shadow-sm">
       
       <!-- Notifications par email -->
       <div class="space-y-4">
         <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Notifications par email</h3>
         
         <div class="space-y-3">
-          <div class="flex items-start">
-            <div class="flex items-center h-5">
-              <input 
-                id="email-new-listings" 
-                v-model="preferences.email_nouvelles_annonces" 
-                type="checkbox" 
-                class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-              />
-            </div>
-            <div class="ml-3 text-sm">
-              <label for="email-new-listings" class="font-medium text-gray-700">Nouvelles annonces correspondant à vos critères</label>
-              <p class="text-gray-500">Recevez un email lorsque de nouvelles annonces correspondant à vos recherches sauvegardées sont publiées.</p>
-            </div>
-          </div>
-          
+                    
           <div class="flex items-start">
             <div class="flex items-center h-5">
               <input 
                 id="email-messages" 
                 v-model="preferences.email_messages" 
                 type="checkbox" 
-                class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                class="h-4 w-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-500"
               />
             </div>
             <div class="ml-3 text-sm">
@@ -71,7 +57,7 @@
                 disabled
                 checked
                 type="checkbox" 
-                class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                class="h-4 w-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-800"
               />
             </div>
             <div class="ml-3 text-sm">
@@ -86,7 +72,7 @@
                 id="email-updates" 
                 v-model="preferences.email_mises_a_jour" 
                 type="checkbox" 
-                class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                class="h-4 w-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-800"
               />
             </div>
             <div class="ml-3 text-sm">
@@ -108,7 +94,7 @@
                 id="app-notifications" 
                 v-model="preferences.app_notifications_push" 
                 type="checkbox" 
-                class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                class="h-4 w-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-800"
               />
             </div>
             <div class="ml-3 text-sm">
@@ -162,7 +148,7 @@
                 id="newsletter" 
                 v-model="preferences.newsletter" 
                 type="checkbox" 
-                class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                class="h-4 w-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-800"
               />
             </div>
             <div class="ml-3 text-sm">
@@ -185,7 +171,7 @@
         <button
           type="submit"
           :disabled="saving"
-          class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 flex items-center"
+          class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-500 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 flex items-center"
         >
           <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

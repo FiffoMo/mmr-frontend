@@ -20,7 +20,7 @@
                 </svg>
               </span>
             </dt>
-            <dd v-if="faq.isOpen" class="px-4 py-5 sm:px-6 bg-gray-100 text-base text-gray-700">
+            <dd v-if="faq.isOpen" class="px-4 py-5 sm:px-6 bg-slate-100 text-base text-gray-700">
               <div v-if="faq.question === 'Comment puis-je publier une annonce immobilière ?'">
                 <p>Si vous êtes un particulier ou une agence immobilière, vous pouvez publier une annonce sur notre plateforme. <span @click="goToLink('/tarifs')" class="text-cyan-600 hover:text-cyan-900 hover:underline cursor-pointer">Différentes formules</span> sont disponibles selon vos besoins.</p>
               </div>
@@ -33,7 +33,7 @@
         </dl>
       </div>
   
-      <div class="mt-12 bg-gray-100 shadow overflow-hidden rounded-lg p-6 text-center">
+      <div class="mt-12 bg-slate-100 shadow overflow-hidden rounded-lg p-6 text-center">
         <h2 class="text-xl font-semibold text-gray-900 mb-4">Vous ne trouvez pas de réponse à votre question ?</h2>
         <p class="text-gray-700 mb-6">Contactez-nous directement et nous vous répondrons dans les plus brefs délais.</p>
         

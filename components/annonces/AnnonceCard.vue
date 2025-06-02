@@ -104,9 +104,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useAnnonces } from '~/composables/useAnnonces';
-import { useFavorites } from '~/composables/useFavorites'; // À créer
+import { useFavorites } from '~/composables/useFavorites'; 
+import { useAuthStore } from '~/stores/useAuthStore';
+import { useDirectusSDK } from '~/composables/useDirectusSDK';
 
 // État pour le modal de login
 const showLoginModal = ref(false);
@@ -115,12 +117,14 @@ const loginAction = ref(''); // 'favorite' ou 'search'
 // Récupérer le composable useAnnonces
 const { isCoupDeCoeur } = useAnnonces();
 
-// Récupérer le composable useFavorites
-const { isFavorite, toggleFavorite } = useFavorites();
+// Récupérer le store d'authentification
+const authStore = useAuthStore();
 
-// Récupérer l'ID de l'utilisateur connecté
-// Vous devrez adapter cette partie en fonction de votre logique d'authentification
-const userId = ref(null); // À remplacer par la vraie valeur
+// Récupérer le composable useFavorites
+const { isFavorite, toggleFavorite, fetchFavorites } = useFavorites();
+
+// DirectusSDK pour les appels API directs
+const directusSDK = useDirectusSDK();
 
 // Définir les props
 const props = defineProps({
@@ -139,31 +143,60 @@ const showCoupDeCoeur = computed(() => {
   return props.forceCoupDeCoeur || isCoupDeCoeur(props.annonce);
 });
 
+// Vérifier si l'utilisateur est connecté
+const isAuthenticated = computed(() => {
+  return authStore.isAuthenticated && authStore.clientId;
+});
+
+// Charger les favoris au montage du composant
+onMounted(() => {
+  if (isAuthenticated.value) {
+    fetchFavorites();
+  }
+});
+
 // Gestion du clic sur le bouton favoris
-const handleFavoriteClick = (annonceId) => {
-  if (!userId.value) {
+const handleFavoriteClick = async (annonceId) => {
+  console.log('Clic sur favoris pour:', annonceId);
+  
+  if (!isAuthenticated.value) {
+    console.log('Utilisateur non connecté, affichage du modal de login');
     loginAction.value = 'favorite';
     showLoginModal.value = true;
     return;
   }
   
-  toggleFavorite(annonceId, userId.value);
+  console.log('Utilisateur connecté, toggle du favori');
+  await toggleFavorite(annonceId);
 };
 
 // Gestion du clic sur le bouton de sauvegarde de recherche
-const handleSaveSearch = () => {
-  if (!userId.value) {
+const handleSaveSearch = async () => {
+  console.log('Clic sur sauvegarde de recherche');
+  
+  if (!isAuthenticated.value) {
+    console.log('Utilisateur non connecté, affichage du modal de login');
     loginAction.value = 'search';
     showLoginModal.value = true;
     return;
   }
   
-  saveSearch();
+  console.log('Utilisateur connecté, sauvegarde de la recherche');
+  await saveSearch();
 };
 
 // Fonction pour sauvegarder les critères de recherche actuels
 const saveSearch = async () => {
   try {
+    console.log('Sauvegarde des critères de recherche en cours...');
+    
+    // Vérifier que l'email utilisateur est disponible
+    if (!authStore.user?.email) {
+      console.error('Email utilisateur non disponible:', authStore.user);
+      alert('Erreur: Email utilisateur non disponible. Veuillez vous reconnecter.');
+      return false;
+    }
+    
     // Construire les critères à partir de l'annonce actuelle
     const searchData = {
       nom: `Similaire à ${props.annonce.Titre}`,
@@ -173,27 +206,38 @@ const saveSearch = async () => {
       surface_min: Math.round(props.annonce.surface_habitable * 0.9), // -10% de la surface
       pieces_min: props.annonce.pieces,
       chambres_min: props.annonce.chambres,
-      notifications_actives: true,
-      utilisateur: userId.value
+      notifications_actives: true
     };
     
-    // Appel API pour sauvegarder la recherche
-    const response = await fetch('/api/directus/items/recherches_sauvegardees', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(searchData)
+    console.log('Données de recherche:', searchData);
+    console.log('💾 Email utilisateur pour alerte:', authStore.user.email);
+    
+    // Utiliser directement le SDK pour créer l'alerte avec tous les champs individuels
+    const result = await directusSDK.createItem('recherches_sauvegardees', {
+      client_id: authStore.clientId,
+      email: authStore.user.email,  // ← AJOUT DE L'EMAIL
+      utilisateur: authStore.clientId, // Ajouter les deux champs pour compatibilité
+      nom: searchData.nom,
+      type_bien: searchData.type_bien,
+      localisation: searchData.localisation,
+      prix_max: searchData.prix_max,
+      surface_min: searchData.surface_min,
+      pieces_min: searchData.pieces_min,
+      chambres_min: searchData.chambres_min,
+      criteres_supplementaires: JSON.stringify(searchData), // Stocker aussi une copie complète pour référence
+      notifications_actives: searchData.notifications_actives
     });
     
-    if (!response.ok) {
-      throw new Error(`Erreur API: ${response.status}`);
+    if (result) {
+      alert('Alerte créée avec succès ! Vous recevrez des emails pour les biens similaires.');
+      return true;
+    } else {
+      throw new Error('Échec de la sauvegarde');
     }
-    
-    alert('Critères de recherche sauvegardés avec succès !');
   } catch (error) {
     console.error('Erreur lors de la sauvegarde des critères de recherche:', error);
-    alert('Une erreur est survenue lors de la sauvegarde des critères de recherche');
+    alert('Une erreur est survenue lors de la création de l\'alerte');
+    return false;
   }
 };
 

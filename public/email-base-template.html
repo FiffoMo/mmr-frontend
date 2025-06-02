@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ma Maison Rapporte - Template Email</title>
+  <link rel="stylesheet" href="email-styles.css">
+</head>
+<body>
+  <!-- Container principal -->
+  <div class="email-container">
+    
+    <!-- HEADER -->
+    <div class="email-header">
+      <img src="http://localhost:3000/images/logo_mmr_250.png" alt="Ma Maison Rapporte" class="header-logo">
+      <h3>Le premier portail immobilier<br>dédié aux biens avec potentiel locatif</h3>
+    </div>
+
+    
+   
+    <!-- CONTENU PRINCIPAL -->
+    <div class="email-content">
+      
+      <!-- Exemple: Email de contact pour l'équipe -->
+      <h2 class="content-title">Nouveau message</h2>
+      
+      <div class="info-box primary">
+        <h3 class="box-title"><span>👤</span>Informations du contact</h3>
+        <div class="contact-details">
+          <p><strong>Nom :</strong> Philippe Morselli</p>
+          <p><strong>Email :</strong> <a href="mailto:philippe@example.com">philippe@example.com</a></p>
+          <p><strong>Téléphone :</strong> +33 6 12 34 56 78</p>
+          <p><strong>Date :</strong> 30/05/2025 à 17:30</p>
+        </div>
+      </div>
+      
+      <div class="message-box">
+        <h3 class="box-title"><span>💬</span>Message</h3>
+        <div class="message-content">
+Bonjour,
+
+Je souhaiterais avoir des informations complémentaires sur votre service de gestion locative.
+
+Pouvez-vous me rappeler dans la journée ?
+
+Merci,
+Philippe
+        </div>
+      </div>
+      
+      <div class="action-box success">
+        <h4 class="box-title">🚀 Actions rapides</h4>
+        <p><strong>Pour répondre :</strong></p>
+        <p>📧 Répondre directement à <a href="mailto:philippe@example.com">philippe@example.com</a></p>
+        <p>📞 Appeler au <a href="tel:+33612345678">+33 6 12 34 56 78</a></p>
+      </div>
+      
+
+
+      <!-- Séparateur -->
+      <hr class="separator">
+      
+
+
+      <!-- Exemple: Email de confirmation pour le client -->
+      <h2 class="content-title">Confirmation de réception</h2>
+      
+      <p class="greeting">Bonjour <strong>Philippe</strong>,</p>
+      
+      <p>Nous avons bien reçu votre message et vous remercions de nous avoir contactés.</p>
+      
+      <div class="message-box">
+        <h3 class="box-title"><span>💬</span>Récapitulatif de votre message</h3>
+        <div class="recap-content">
+          <p><em>"Je souhaiterais avoir des informations complémentaires sur votre service de gestion locative..."</em></p>
+        </div>
+      </div>
+      
+      <div class="action-box success">
+        <h3 class="box-title">Notre équipe vous répondra sous 24-48h</h3>
+        <p>En attendant, n'hésitez pas à nous contacter directement :</p>
+        
+        <div class="contact-info">
+          <p><strong>Téléphone :</strong> <a href="tel:+33667244289">+33 (0)6 67 24 42 89</a></p>
+          <p><strong>Horaires :</strong> Du lundi au vendredi, 9h-17h</p>
+          <p><strong>Email :</strong> <a href="mailto:contact@ma-maison-rapporte.com">contact@ma-maison-rapporte.com</a></p>
+          <p><strong>Adresse :</strong> 12 Rue de la Part-Dieu, 69003 Lyon</p>
+        </div>
+      </div>
+      
+      <div class="message-box">
+        <h3 class="box-title"><span>🏠</span>Découvrez nos services</h3>
+        <p class="service-list">
+          <a href="https://ma-maison-rapporte.com" class="cta-button">Parcourir les annonces</a> 
+          <a href="https://ma-maison-rapporte.com/deposer-annonce" class="cta-button">Déposer une annonce</a>
+          <a href="https://ma-maison-rapporte.com/tarifs" class="cta-button">Voir nos tarifs</a>
+        </p>
+        <div class="cta-section">
+          <a href="https://ma-maison-rapporte.com" class="cta-button grand">Visiter notre site</a>
+        </div>
+      </div>
+      
+
+
+      <!-- Séparateur -->
+      <hr class="separator">
+      
+
+      <!-- Exemple: Email de confirmation pour le client -->
+      <h2 class="content-title">Récapitulatif de votre commande</h2>
+      <p>Nous vous remercions de votre commande sur le site <strong>MMR - Ma Maison Rapporte</strong>. Voici le récapitulatif de votre commande.</p>
+    
+      <!-- Order Summary (pour Stripe) -->
+      <div class="order-summary mt-30">
+        <h3 class="box-title"><span>📋</span> Récapitulatif de commande</h3>
+        <p>&nbsp;</p>
+        <div class="order-row">
+          <span>Pack Annonces Premium</span>
+          <span>29,99€</span>
+        </div>
+        <div class="order-row">
+          <span>Code promo: WELCOME10</span>
+          <span class="discount">-3,00€</span>
+        </div>
+        <div class="order-row total">
+          <span><strong>Total</strong></span>
+          <span><strong>26,99€</strong></span>
+        </div>
+      </div>
+      
+      <!-- Promo Highlight -->
+      <div class="promo-highlight">
+        <strong>🎉 Code promo appliqué :</strong> WELCOME10 (-10%)
+      </div>
+      
+
+
+      <!-- Warning Box -->
+      <div class="info-box warning">
+        <h3 class="box-title"><span>⚠️</span>Information importante</h4>
+        <p>Votre forfait expire dans 7 jours. Pensez à le renouveler pour continuer à bénéficier de nos services.</p>
+        <a href="https://ma-maison-rapporte.com/deposer-annonce" class="cta-button">Renouveler mon forfait</a> 
+      </div>
+
+      
+
+      <!-- Error Box -->
+      <div class="info-box error">
+        <h3 class="box-title"><span>❌</span>Échec de paiement</h4>
+        <p>Votre paiement n'a pas pu être traité. Veuillez vérifier vos informations bancaires.</p>
+      </div>
+      
+    </div>
+
+    
+
+    <!-- FOOTER -->
+    <div class="email-footer">
+      <img src="http://localhost:3000/images/logo_mmr_clair_200.png" alt="Ma Maison Rapporte" class="header-logo mt-20">
+      <div class="footer-contact-info">
+        <h3><strong>MMR - Ma Maison Rapporte Sàrl</strong></h3>
+        <p><strong>Téléphone :</strong> <a href="tel:+33667244289">+33 (0)6 67 24 42 89</a></p>
+        <p><strong>Horaires :</strong> Du lundi au vendredi, 9h-17h</p>
+        <p><strong>Email :</strong> <a href="mailto:contact@ma-maison-rapporte.com">contact@ma-maison-rapporte.com</a></p>
+        <p><strong>Adresse :</strong> 12 Rue de la Part-Dieu, 69003 Lyon</p>
+        <p><a href="https://ma-maison-rapporte.com" class="cta-button petit">Visitez notre site</a></p>
+      </div>
+      
+      <p class="unsubscribe">
+        Cet email a été envoyé automatiquement.<br>
+        Si vous ne souhaitez plus recevoir ces notifications, 
+        <a href="https://ma-maison-rapporte.com/unsubscribe">cliquez ici</a>.<br>
+        &nbsp; &nbsp; 
+      </p>
+    </div>
+    
+  </div>
+</body>
+</html>

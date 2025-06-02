@@ -355,8 +355,16 @@ export default {
       try {
         await this.authStore.login(this.loginForm.email, this.loginForm.password);
         
-        // Rediriger vers le tableau de bord au lieu de la page d'accueil
-        this.$router.push('/settings');
+        // Vérifier s'il y a une redirection demandée dans l'URL
+        const redirect = this.$route.query.redirect;
+        
+        if (redirect) {
+          // Rediriger vers la page d'achat ou autre page demandée
+          this.$router.push(decodeURIComponent(redirect));
+        } else {
+          // Redirection par défaut vers le tableau de bord
+          this.$router.push('/settings');
+        }
       } catch (error) {
         console.error('Erreur de connexion:', error);
         this.error = error.message || 'Identifiants incorrects';
@@ -394,8 +402,16 @@ export default {
           this.registerForm.password
         );
         
-        // Rediriger vers la page d'accueil
-        this.$router.push('/');
+        // Vérifier s'il y a une redirection demandée dans l'URL
+        const redirect = this.$route.query.redirect;
+        
+        if (redirect) {
+          // Rediriger vers la page d'achat ou autre page demandée
+          this.$router.push(decodeURIComponent(redirect));
+        } else {
+          // Redirection par défaut
+          this.$router.push('/');
+        }
       } catch (error) {
         console.error('Erreur d\'inscription:', error);
         

@@ -1,5 +1,5 @@
 <template>
-  <div class="search-bar bg-white shadow-lg rounded-lg p-6 -mt-10 relative z-10 mx-4 md:mx-auto max-w-5xl">
+  <div class="search-bar bg-slate-100 shadow-lg rounded-lg p-6 -mt-10 relative z-10 mx-4 md:mx-auto max-w-5xl">
     <h2 class="text-xl font-semibold mb-4">Rechercher un bien immobilier</h2>
     <form @submit.prevent="submitSearch">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">

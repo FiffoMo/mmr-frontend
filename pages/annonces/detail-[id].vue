@@ -193,19 +193,12 @@
           <div class="mb-6">
             <h3 class="text-xl font-semibold mb-2">Localisation</h3>
             <p class="mb-3">{{ annonce.localisation }}</p>
-            <LocationMap :location="annonce.localisation" />
+            <LocationMap :location="annonce.localisation || ''" />
           </div>
           
           <h3 class="text-xl font-semibold mb-4">Nous contacter</h3>
           
-          <div v-if="annonce.prix_location" class="bg-amber-100 p-4 rounded-lg mb-6">
-            <div class="mb-2">
-              <p class="font-medium">Loyer mensuel estimé:</p>
-              <p class="text-xl font-bold">{{ formatPrice(annonce.prix_location) }}</p>
-            </div>
-            <p class="mt-1">Rendement brut: {{ calculateYield(annonce.prix_vente, annonce.prix_location) }}%</p>
-          </div>
-          <div v-else class="bg-amber-100 p-4 rounded-lg mb-6">
+          <div class="bg-amber-100 p-4 rounded-lg mb-6">
             <p>Contactez-nous pour une estimation du potentiel locatif de ce bien.</p>
           </div>
           
@@ -214,33 +207,85 @@
             <h4 class="font-semibold text-gray-700 mb-3">Vendeur</h4>
             <div class="flex items-center mb-3">
               <div class="w-16 h-16 bg-gray-200 rounded-full overflow-hidden mr-3">
-                <!-- Placeholder pour le logo -->
-                <div class="w-full h-full flex items-center justify-center text-gray-400">Logo</div>
+                <img 
+                  v-if="proprietaireAvatar" 
+                  :src="proprietaireAvatar"
+                  :alt="`Avatar de ${proprietaireName}`"
+                  class="w-full h-full object-cover"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
               </div>
               <div>
-                <p class="font-medium">Maison Ma Maison Rapporte</p>
-                <a href="http://www.mmr.fr" class="text-cyan-600 hover:underline">www.mmr.fr</a>
+                <p class="font-medium">{{ proprietaireName }}</p>
+                <p v-if="annonce.proprietaire?.company" class="text-sm text-gray-600">
+                  {{ annonce.proprietaire.company }}
+                </p>
+                <a 
+                  v-if="annonce.proprietaire?.website_url" 
+                  :href="annonce.proprietaire.website_url" 
+                  target="_blank"
+                  class="text-cyan-600 hover:underline text-sm"
+                >
+                  {{ formatWebsiteUrl(annonce.proprietaire.website_url) }}
+                </a>
               </div>
             </div>
+            
+            <!-- Informations de contact (selon les préférences de confidentialité) -->
             <div>
-              <p class="font-medium">Comment nous contacter:</p>
-              <p>info@mmr.fr | 01 23 45 67 89</p>
+              <p class="font-medium mb-2">Comment nous contacter:</p>
+              <div class="space-y-1">
+                <!-- Email (si pas masqué) -->
+                <p v-if="!annonce.proprietaire?.hide_email && annonce.proprietaire?.email">
+                  <span class="inline-flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.44a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    {{ annonce.proprietaire.email }}
+                  </span>
+                </p>
+                
+                <!-- Téléphone (si pas masqué) -->
+                <p v-if="!annonce.proprietaire?.hide_phone && annonce.proprietaire?.phone">
+                  <span class="inline-flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    {{ annonce.proprietaire.phone }}
+                  </span>
+                </p>
+                
+                <!-- Instructions de contact personnalisées -->
+                <p v-if="annonce.proprietaire?.contact_instructions" class="text-sm text-gray-600 mt-2">
+                  {{ annonce.proprietaire.contact_instructions }}
+                </p>
+                
+                <!-- Message par défaut si tout est masqué -->
+                <p v-if="isContactInfoHidden" class="text-sm text-gray-600">
+                  Utilisez le bouton "Contacter le vendeur" ci-dessous pour entrer en contact.
+                </p>
+              </div>
             </div>
           </div>
-          
-          <div class="mb-4">
-            <h4 class="font-semibold text-gray-700 mb-2">Date de publication</h4>
-            <p>{{ formatDate(annonce.date_created) }}</p>
-          </div>
-          
-          <!-- Bouton de contact -->
+          <!-- AJOUTER LE BOUTON ICI -->
           <button 
-            @click="openContactForm" 
-            class="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-md font-medium mt-4"
+            @click="openContactForm"
+            class="w-full bg-cyan-600 text-white py-3 px-4 rounded-lg hover:bg-cyan-700 transition-colors font-medium flex items-center justify-center"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.44a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
             Contacter le vendeur
           </button>
-        </div>
+
+          <p class="text-sm text-gray-500 text-center mt-2">
+            Vos coordonnées seront transmises au vendeur
+          </p>
+        </div>  
       </div>
       
       <!-- Partie locative (si applicable) -->
@@ -515,6 +560,52 @@ const hasLocationImages = computed(() => {
   }
   return false;
 });
+
+// Nom complet du propriétaire
+const proprietaireName = computed(() => {
+  if (!annonce.value?.proprietaire) return 'Propriétaire non disponible';
+  
+  const firstName = annonce.value.proprietaire.first_name || '';
+  const lastName = annonce.value.proprietaire.last_name || '';
+  
+  if (firstName && lastName) {
+    return `${firstName} ${lastName}`;
+  } else if (firstName || lastName) {
+    return firstName || lastName;
+  } else if (annonce.value.proprietaire.company) {
+    return annonce.value.proprietaire.company;
+  } else {
+    return 'Propriétaire';
+  }
+});
+
+// URL de l'avatar du propriétaire
+const proprietaireAvatar = computed(() => {
+  if (annonce.value?.proprietaire?.avatar?.id) {
+    return `http://localhost:8055/assets/${annonce.value.proprietaire.avatar.id}`;
+  }
+  return null;
+});
+
+// Vérifier si toutes les infos de contact sont masquées
+const isContactInfoHidden = computed(() => {
+  const prop = annonce.value?.proprietaire;
+  if (!prop) return true;
+  
+  const emailHidden = prop.hide_email || !prop.email;
+  const phoneHidden = prop.hide_phone || !prop.phone;
+  const noInstructions = !prop.contact_instructions;
+  
+  return emailHidden && phoneHidden && noInstructions;
+});
+
+// Formatter l'URL du site web pour l'affichage
+const formatWebsiteUrl = (url) => {
+  if (!url) return '';
+  
+  // Enlever le protocole pour l'affichage
+  return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+};
 
 // Charger les données via notre composable
 onMounted(async () => {

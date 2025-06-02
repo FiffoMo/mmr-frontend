@@ -48,7 +48,7 @@
             
             <div class="text-center">
               <NuxtLink 
-                :to="getSettingsUrl(orderDetails.productType)" 
+                to="/settings?tab=orders"  
                 class="inline-block px-6 py-3 bg-cyan-500 text-white font-medium rounded-md hover:bg-cyan-600"
               >
                 Gérer mes produits

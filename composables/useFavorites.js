@@ -1,5 +1,7 @@
 // composables/useFavorites.js
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useDirectusSDK } from './useDirectusSDK';
+import { useAuthStore } from '~/stores/useAuthStore';
 
 // État partagé pour stocker les favoris
 const favorites = ref([]);
@@ -7,29 +9,65 @@ const loading = ref(false);
 const initialized = ref(false);
 
 export function useFavorites() {
+  // Accès au SDK Directus
+  const directusSDK = useDirectusSDK();
+  
+  // Accès au store d'authentification
+  const authStore = useAuthStore();
+  
   // Charger les favoris depuis l'API
-  const fetchFavorites = async (userId) => {
-    if (!userId) return;
+  const fetchFavorites = async () => {
+    // Vérifions si l'utilisateur est authentifié
+    if (!authStore.isAuthenticated || !authStore.clientId) {
+      console.log('Impossible de charger les favoris: utilisateur non connecté');
+      return;
+    }
     
     // Éviter de charger plusieurs fois si déjà initialisé
     if (initialized.value && favorites.value.length > 0) return;
     
     loading.value = true;
+    
     try {
-      const response = await fetch(`/api/directus/items/favoris?filter[utilisateur][_eq]=${userId}&fields=*,annonce.*`);
+      console.log('Chargement des favoris pour l\'utilisateur:', authStore.clientId);
       
-      if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
-      }
+      // Utiliser le SDK Directus pour récupérer les favoris
+      const userFavorites = await directusSDK.getUserFavorites();
       
-      const data = await response.json();
+      console.log('Favoris récupérés via SDK:', userFavorites);
       
-      if (data && data.data) {
-        favorites.value = data.data;
+      if (userFavorites && Array.isArray(userFavorites)) {
+        favorites.value = userFavorites;
         initialized.value = true;
       }
     } catch (error) {
       console.error('Erreur lors du chargement des favoris:', error);
+      
+      // En cas d'échec, essayer le fallback direct mais avec client_id
+      try {
+        const userId = authStore.clientId;
+        
+        if (!userId) {
+          throw new Error('ID utilisateur non disponible');
+        }
+        
+        // Utiliser client_id au lieu de utilisateur
+        const response = await fetch(`/api/directus/items/favoris?filter[client_id][_eq]=${userId}&fields=id,status,date_created,client_id,annonce.id,annonce.Titre,annonce.prix_vente,annonce.localisation,annonce.surface_habitable,annonce.pieces,annonce.chambres,annonce.image_principale`);
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result && result.data) {
+          favorites.value = result.data;
+          initialized.value = true;
+        }
+      } catch (fallbackError) {
+        console.error('Erreur lors de la récupération directe des favoris:', fallbackError);
+        // Ne pas modifier favorites.value
+      }
     } finally {
       loading.value = false;
     }
@@ -38,67 +76,77 @@ export function useFavorites() {
   // Vérifier si une annonce est dans les favoris
   const isFavorite = (annonceId) => {
     if (!annonceId) return false;
-    return favorites.value.some(fav => fav.annonce === annonceId || fav.annonce?.id === annonceId);
+    
+    return favorites.value.some(fav => {
+      // Vérifier les deux possibilités de structure
+      if (fav.annonce && typeof fav.annonce === 'object') {
+        return fav.annonce.id === annonceId;
+      }
+      return fav.annonce === annonceId;
+    });
   };
   
   // Ajouter/retirer une annonce des favoris
-  const toggleFavorite = async (annonceId, userId) => {
-    if (!userId || !annonceId) {
-      console.error('ID utilisateur ou annonce manquant');
-      return;
+  const toggleFavorite = async (annonceId) => {
+    if (!authStore.isAuthenticated || !authStore.clientId) {
+      console.error('Utilisateur non connecté');
+      return false;
     }
+    
+    if (!annonceId) {
+      console.error('ID annonce manquant');
+      return false;
+    }
+    
+    const userId = authStore.clientId;
+    loading.value = true;
     
     try {
       if (isFavorite(annonceId)) {
         // Trouver l'ID du favori
         const favorite = favorites.value.find(fav => 
-          fav.annonce === annonceId || fav.annonce?.id === annonceId
+          (fav.annonce === annonceId) || 
+          (fav.annonce && fav.annonce.id === annonceId)
         );
         
         if (!favorite) {
           throw new Error('Favori introuvable');
         }
         
-        // Supprimer le favori
-        const response = await fetch(`/api/directus/items/favoris/${favorite.id}`, {
-          method: 'DELETE'
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
+        // Supprimer le favori avec le SDK
+        await directusSDK.removeFavorite(favorite.id);
         
         // Mettre à jour l'état local
         favorites.value = favorites.value.filter(fav => 
-          fav.annonce !== annonceId && fav.annonce?.id !== annonceId
+          fav.id !== favorite.id
         );
+        
+        console.log('Favori supprimé avec succès');
+        return true;
       } else {
-        // Ajouter aux favoris
-        const response = await fetch('/api/directus/items/favoris', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            annonce: annonceId,
-            utilisateur: userId
-          })
+        // Ajouter aux favoris avec le SDK
+        // Ajouter les deux champs pour assurer la compatibilité
+        const newFavorite = await directusSDK.createItem('favoris', {
+          annonce: annonceId,
+          client_id: userId,
+          utilisateur: userId, // Ajouter également le champ utilisateur
+          date_created: new Date().toISOString()
         });
         
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
         // Ajouter à l'état local
-        if (data && data.data) {
-          favorites.value.push(data.data);
+        if (newFavorite) {
+          favorites.value.push(newFavorite);
+          console.log('Favori ajouté avec succès');
+          return true;
         }
       }
+      
+      return false;
     } catch (error) {
       console.error('Erreur lors de la gestion des favoris:', error);
-      // On pourrait ajouter ici une notification à l'utilisateur
+      return false;
+    } finally {
+      loading.value = false;
     }
   };
   
@@ -110,32 +158,42 @@ export function useFavorites() {
   });
   
   // Effacer tous les favoris d'un utilisateur
-  const clearAllFavorites = async (userId) => {
-    if (!userId) return;
+  const clearAllFavorites = async () => {
+    if (!authStore.isAuthenticated || !authStore.clientId) return;
     
     try {
-      // Version simplifiée qui supprime un par un
-      // Dans un cas réel, vous pourriez avoir une route API dédiée pour supprimer tous les favoris en une fois
+      loading.value = true;
+      
+      // Supprimer chaque favori avec le SDK
       const deletePromises = favorites.value.map(fav => 
-        fetch(`/api/directus/items/favoris/${fav.id}`, { method: 'DELETE' })
+        directusSDK.deleteItem('favoris', fav.id)
       );
       
       await Promise.all(deletePromises);
       
       // Vider le tableau local
       favorites.value = [];
+      console.log('Tous les favoris ont été supprimés');
     } catch (error) {
       console.error('Erreur lors de la suppression de tous les favoris:', error);
+    } finally {
+      loading.value = false;
     }
   };
   
   // Initialiser les favoris au chargement de l'application
-  // Vous pourriez appeler cela depuis un middleware ou un plugin Nuxt
-  const initFavorites = (userId) => {
-    if (userId && !initialized.value) {
-      fetchFavorites(userId);
+  const initFavorites = () => {
+    if (authStore.isAuthenticated && !initialized.value) {
+      fetchFavorites();
     }
   };
+  
+  // Charger automatiquement les favoris si l'utilisateur est connecté
+  onMounted(() => {
+    if (authStore.isAuthenticated) {
+      initFavorites();
+    }
+  });
   
   return {
     favorites: computed(() => favorites.value),

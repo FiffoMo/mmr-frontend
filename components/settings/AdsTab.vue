@@ -28,8 +28,11 @@
       <h3 class="mt-2 text-sm font-medium text-gray-900">Aucune publicité</h3>
       <p class="mt-1 text-sm text-gray-500">Vous n'avez pas encore de publicité active sur notre plateforme.</p>
       <div class="mt-6">
-        <NuxtLink to="/publicite/creer" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
-          Créer une publicité
+        <NuxtLink to="/tarifs-publicite" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-500 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
+          <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Nouvelle publicité
         </NuxtLink>
       </div>
     </div>
@@ -53,10 +56,43 @@
               <option value="expired">Expirée</option>
             </select>
           </div>
+          
+          <!-- Nouveaux contrôles de tri -->
+          <div>
+            <label for="sort-field" class="block text-sm font-medium text-gray-700 mb-1">Trier par</label>
+            <div class="flex items-center space-x-2">
+              <select 
+                id="sort-field" 
+                v-model="sortField" 
+                class="block h-10 px-3 rounded-md border-gray-300 border shadow-sm bg-white focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+              >
+                <option value="date_created">Date de création</option>
+                <option value="start_date">Date de début</option>
+                <option value="end_date">Date de fin</option>
+                <option value="commande_id">ID de commande</option>
+                <option value="title">Titre</option>
+                <option value="impressions">Impressions</option>
+                <option value="clicks">Clics</option>
+              </select>
+              
+              <button 
+                @click="sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'" 
+                class="inline-flex items-center p-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50"
+                :title="sortDirection === 'asc' ? 'Tri ascendant' : 'Tri descendant'"
+              >
+                <svg v-if="sortDirection === 'asc'" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
         
         <div>
-          <NuxtLink to="/publicite/creer" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
+          <NuxtLink to="/tarifs-publicite" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-500 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
             <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
@@ -68,19 +104,43 @@
       <!-- Tableau des publicités -->
       <div class="bg-slate-200 overflow-hidden border border-gray-300 shadow-sm rounded-lg">
         <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+          <thead class="bg-yellow-100">
             <tr>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Publicité
+                <button @click="changeSorting('title')" class="ml-1 text-gray-400 hover:text-gray-600" title="Trier par titre">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                  </svg>
+                </button>
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Détails
+                <button @click="changeSorting('date_created')" class="ml-1 text-gray-400 hover:text-gray-600" title="Trier par date de création">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>&nbsp;
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                  </svg>
+                </button>
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Statistiques
+                <button @click="changeSorting('impressions')" class="ml-1 text-gray-400 hover:text-gray-600" title="Trier par impressions">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Statut
+                <button @click="changeSorting('status')" class="ml-1 text-gray-400 hover:text-gray-600" title="Trier par statut">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                  </svg>
+                </button>
               </th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
@@ -88,16 +148,22 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-if="ads.length === 0" class="hover:bg-gray-50">
+            <tr v-if="filteredAds.length === 0" class="hover:bg-gray-50">
               <td colspan="5" class="px-6 py-4 text-center text-gray-500">
                 Aucune publicité disponible
               </td>
             </tr>
-            <tr v-for="ad in filteredAds" :key="ad.id" class="hover:bg-gray-50">
+            <tr v-for="ad in paginatedAds" :key="ad.id" class="hover:bg-yellow-50">
               <td class="px-6 py-4">
                 <div class="flex items-center">
                   <div class="h-20 w-32 flex-shrink-0 rounded-md overflow-hidden border border-gray-200">
-                    <img v-if="ad.image" :src="ad.image" alt="" class="h-full w-full object-cover" />
+                    <img 
+                      v-if="ad.image" 
+                      :src="ad.image" 
+                      alt="" 
+                      class="h-full w-full object-cover"
+                      @error="handleImageError($event, ad)" 
+                    />
                     <div v-else class="h-full w-full bg-gray-200 flex items-center justify-center text-gray-400">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -108,12 +174,16 @@
                     <div class="text-sm font-medium text-gray-900">
                       {{ ad.title }}
                     </div>
-                    <div class="text-sm text-gray-500">
+                    <div class="text-sm text-gray-500 pt-2 pb-2">
                       {{ getTypeLabel(ad.type) }}
                     </div>
-                    <div class="text-sm text-cyan-600">
-                      {{ formatPrice(ad.price) }}
+                    <!-- Dans la colonne publicité, conserver ceci: -->
+                    <div v-if="ad.commande_id" class="mt-1 flex items-center">
+                      <span class="text-xs px-2 py-1 bg-yellow-100 text-blue-700 rounded">
+                        Commande {{ formatCommandeId(ad.commande_id) }}
+                      </span>
                     </div>
+
                   </div>
                 </div>
               </td>
@@ -314,8 +384,8 @@
       </div>
     </div>
     
-    <!-- Modal de prolongation de durée -->
-    <div v-if="extendDurationModal.show" class="fixed inset-0 z-50 overflow-y-auto">
+<!-- Modal de prolongation de durée -->
+<div v-if="extendDurationModal.show" class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 transition-opacity" aria-hidden="true">
           <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
@@ -394,8 +464,10 @@
   </div>
 </template>
 
+<!-- Script section mise à jour pour AdsTab.vue avec tri par date et affichage de l'ID de commande -->
 <script>
 import { useDirectusSDK } from '@/composables/useDirectusSDK';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export default {
   name: 'AdsTab',
@@ -403,16 +475,22 @@ export default {
   props: {
     userId: {
       type: String,
-      required: true
+      required: false
+    },
+    isActive: {
+      type: Boolean,
+      default: false
     }
   },
   
   setup() {
     // Initialiser le service SDK Directus
     const directusSDK = useDirectusSDK();
+    const authStore = useAuthStore();
     
     return {
-      directusSDK
+      directusSDK,
+      authStore
     };
   },
   
@@ -420,10 +498,15 @@ export default {
     return {
       loading: false,
       error: null,
+      dataRequested: false,
       
       // Filtres
       statusFilter: '',
       typeFilter: '',
+      
+      // Tri
+      sortField: 'date_created', // Tri par défaut sur la date de création
+      sortDirection: 'desc', // Tri par défaut du plus récent au plus ancien
       
       // Données
       ads: [],
@@ -450,9 +533,10 @@ export default {
   },
   
   computed: {
-    // Publicités filtrées
+    // Publicités filtrées et triées
     filteredAds() {
-      return this.ads.filter(ad => {
+      // Filtrer d'abord
+      const filtered = this.ads.filter(ad => {
         // Filtre par statut
         if (this.statusFilter && ad.status !== this.statusFilter) {
           return false;
@@ -465,13 +549,68 @@ export default {
         
         return true;
       });
+      
+      // Puis trier
+      return filtered.sort((a, b) => {
+        let valueA, valueB;
+        
+        // Extraire les valeurs à comparer selon le champ de tri
+        switch (this.sortField) {
+          case 'date_created':
+            valueA = new Date(a.date_created || 0);
+            valueB = new Date(b.date_created || 0);
+            break;
+          case 'start_date':
+            valueA = new Date(a.start_date || 0);
+            valueB = new Date(b.start_date || 0);
+            break;
+          case 'end_date':
+            valueA = new Date(a.end_date || 0);
+            valueB = new Date(b.end_date || 0);
+            break;
+          case 'commande_id':
+            valueA = a.commande_id || 0;
+            valueB = b.commande_id || 0;
+            break;
+          case 'title':
+            valueA = a.title || '';
+            valueB = b.title || '';
+            break;
+          case 'impressions':
+            valueA = a.impressions || 0;
+            valueB = b.impressions || 0;
+            break;
+          case 'clicks':
+            valueA = a.clicks || 0;
+            valueB = b.clicks || 0;
+            break;
+          default:
+            valueA = a[this.sortField] || 0;
+            valueB = b[this.sortField] || 0;
+        }
+        
+        // Déterminer l'ordre de tri
+        const direction = this.sortDirection === 'asc' ? 1 : -1;
+        
+        // Comparer les valeurs
+        if (valueA < valueB) return -1 * direction;
+        if (valueA > valueB) return 1 * direction;
+        return 0;
+      });
     },
     
     // Nombre total de pages
     totalPages() {
-      return Math.ceil(this.totalItems / this.itemsPerPage);
+      // Utiliser la longueur du tableau filtré pour calculer le nombre de pages
+      return Math.ceil(this.filteredAds.length / this.itemsPerPage);
     },
-    
+    // Pages actuellement visibles en fonction de la pagination
+    paginatedAds() {
+      const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+      const endIndex = startIndex + this.itemsPerPage;
+      return this.filteredAds.slice(startIndex, endIndex);
+    },
+
     // Pages à afficher dans la pagination
     displayedPages() {
       const pages = [];
@@ -498,14 +637,30 @@ export default {
       }
       
       return pages;
+    },
+    
+    // Obtenir l'ID utilisateur effectif
+    effectiveUserId() {
+      return this.userId || this.authStore.user?.id;
+    }
+  },
+  
+  watch: {
+    // Surveiller si l'onglet devient actif
+    isActive(newValue) {
+      if (newValue && !this.dataRequested) {
+        this.fetchAds();
+      }
     }
   },
   
   mounted() {
-    this.fetchAds();
+    if (this.isActive) {
+      this.fetchAds();
+    }
   },
   
-  beforeDestroy() {
+  beforeUnmount() {
     // Nettoyer le timer de notification si existant
     if (this.notification.timer) {
       clearTimeout(this.notification.timer);
@@ -513,86 +668,189 @@ export default {
   },
   
   methods: {
-    // Méthode fetchAds() mise à jour pour utiliser client_id
+    // Méthode pour changer le tri
+    changeSorting(field) {
+      // Si on clique sur le même champ, inverser la direction
+      if (field === this.sortField) {
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        // Sinon, changer le champ et mettre la direction par défaut
+        this.sortField = field;
+        // Par défaut pour la date, tri décroissant (du plus récent au plus ancien)
+        this.sortDirection = field.includes('date') ? 'desc' : 'asc';
+      }
+    },
+    
+    // Méthode fetchAds() améliorée pour prendre en compte les publicités sans commande
     async fetchAds() {
       this.loading = true;
       this.error = null;
+      this.dataRequested = true;
       
       // Timeout pour éviter les chargements infinis
       const timeout = setTimeout(() => {
         if (this.loading) {
           console.log('Timeout atteint lors du chargement des publicités');
           this.loading = false;
-          this.ads = [];
+          this.error = "Le chargement a pris trop de temps. Veuillez réessayer.";
         }
-      }, 5000);
+      }, 10000);
       
+      try {
+        console.log('Tentative de récupération via SDK...');
+        const params = {
+          filter: { 
+            _or: [
+              { client_id: { _eq: userId } },
+              { client: { _eq: userId } },
+              { user_created: { _eq: userId } }
+            ]
+          },
+          fields: '*,commande_id,commande' // Spécifier explicitement les champs que nous voulons
+        };
+        
+        const result = await this.directusSDK.getItems('publicite', params);
+        
+        if (result && result.length > 0) {
+          console.log(`${result.length} publicités récupérées via SDK`);
+          adsData = result;
+        }
+      } catch (sdkError) {
+        console.warn('SDK non disponible ou erreur:', sdkError);
+      }
+
       try {
         console.log('Début de fetchAds()');
         
-        // Récupérer l'ID utilisateur depuis les props
-        const userId = this.userId;
+        // Récupérer l'ID utilisateur effectif (props ou store auth)
+        const userId = this.effectiveUserId;
         console.log('ID Utilisateur:', userId);
         
         if (!userId) {
           throw new Error('Utilisateur non identifié');
         }
         
-        // Utiliser d'abord la méthode standardisée du SDK si disponible
-        try {
-          console.log('Tentative de récupération via SDK...');
-          const result = await this.directusSDK.getUserAds();
-          
-          if (result && result.data && result.data.length > 0) {
-            console.log('Publicités récupérées via SDK:', result.data);
-            // Traitement des données ici...
-            this.processAdsData(result.data);
-            return;
-          } else {
-            console.log('Aucune publicité trouvée via SDK, essai avec client_id explicite...');
+        // Pour les administrateurs, récupérer toutes les publicités
+        const isAdmin = this.authStore.isAdmin || (this.authStore.user?.role?.name === 'Administrator');
+        
+        let adsData = [];
+        
+        if (isAdmin) {
+          console.log('Utilisateur administrateur détecté, récupération de toutes les publicités');
+          try {
+            // Pour les administrateurs, ne pas filtrer par client_id
+            const result = await this.directusSDK.getItems('publicite', {
+              fields: '*'
+            });
+            
+            if (result && result.length > 0) {
+              console.log(`${result.length} publicités récupérées pour l'administrateur via SDK`);
+              adsData = result;
+            }
+          } catch (sdkError) {
+            console.warn('SDK non disponible pour admin, essai avec fetch:', sdkError);
+            
+            try {
+              const response = await fetch(`/api/directus/items/publicite`, {
+                credentials: 'include'
+              });
+              
+              if (response.ok) {
+                const result = await response.json();
+                if (result.data && result.data.length > 0) {
+                  console.log(`${result.data.length} publicités récupérées pour l'administrateur via fetch`);
+                  adsData = result.data;
+                }
+              }
+            } catch (fetchError) {
+              console.error('Erreur lors de la récupération directe pour admin:', fetchError);
+            }
           }
-        } catch (sdkError) {
-          console.warn('SDK non disponible ou erreur:', sdkError);
-        }
-        
-        // Fallback: utiliser le SDK avec client_id explicite
-        try {
-          const fallbackResult = await this.directusSDK.getItems('publicite', {
-            filter: { client_id: { _eq: userId } },
-            fields: '*'
-          });
-          
-          if (fallbackResult && fallbackResult.data && fallbackResult.data.length > 0) {
-            console.log('Publicités récupérées via fallback SDK:', fallbackResult.data);
-            this.processAdsData(fallbackResult.data);
-            return;
-          } else {
-            console.log('Aucune publicité trouvée via fallback SDK, essai avec fetch direct...');
+        } else {
+          // Pour les utilisateurs réguliers, filtrer par client_id ou client
+          // Approche 1: Utiliser le SDK directus
+          try {
+            console.log('Tentative de récupération via SDK...');
+            const params = {
+              filter: { 
+                _or: [
+                  { client_id: { _eq: userId } },
+                  { client: { _eq: userId } },
+                  { user_created: { _eq: userId } }
+                ]
+              },
+              fields: '*'
+            };
+            
+            const result = await this.directusSDK.getItems('publicite', params);
+            
+            if (result && result.length > 0) {
+              console.log(`${result.length} publicités récupérées via SDK`);
+              adsData = result;
+            }
+          } catch (sdkError) {
+            console.warn('SDK non disponible ou erreur:', sdkError);
           }
-        } catch (fallbackError) {
-          console.warn('Fallback SDK échoué:', fallbackError);
+          
+          // Approche 2: Utiliser fetch directement si le SDK a échoué
+          if (adsData.length === 0) {
+            try {
+              console.log('Tentative de récupération via fetch direct avec filtre OR...');
+              const filter = JSON.stringify({
+                _or: [
+                  { client_id: { _eq: userId } },
+                  { client: { _eq: userId } },
+                  { user_created: { _eq: userId } }
+                ]
+              });
+              
+              const response = await fetch(`/api/directus/items/publicite?filter=${encodeURIComponent(filter)}`, {
+                credentials: 'include'
+              });
+              
+              if (response.ok) {
+                const result = await response.json();
+                console.log(`Réponse fetch: ${result.data ? result.data.length : 0} publicités trouvées`);
+                
+                if (result.data && result.data.length > 0) {
+                  adsData = result.data;
+                }
+              } else {
+                console.error(`Erreur HTTP: ${response.status}`);
+                
+                // Essayer les filtres individuellement en cas d'échec du filtre OR
+                for (const field of ['client_id', 'client', 'user_created']) {
+                  console.log(`Essai avec champ ${field}...`);
+                  const responseAlt = await fetch(`/api/directus/items/publicite?filter[${field}][_eq]=${userId}`, {
+                    credentials: 'include'
+                  });
+                  
+                  if (responseAlt.ok) {
+                    const resultAlt = await responseAlt.json();
+                    console.log(`Réponse fetch (${field}): ${resultAlt.data ? resultAlt.data.length : 0} publicités trouvées`);
+                    
+                    if (resultAlt.data && resultAlt.data.length > 0) {
+                      adsData = adsData.concat(resultAlt.data);
+                      // Éliminer les doublons par ID
+                      adsData = Array.from(new Map(adsData.map(item => [item.id, item])).values());
+                    }
+                  }
+                }
+              }
+            } catch (fetchError) {
+              console.error('Erreur lors de la récupération directe:', fetchError);
+            }
+          }
         }
         
-        // Dernier recours: utiliser fetch directement avec le standard client_id
-        const response = await fetch(`/api/directus/items/publicite?filter[client_id][_eq]=${userId}`);
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Erreur détaillée API:', errorData);
-          throw new Error(`Erreur API: ${errorData?.errors?.[0]?.message || response.statusText}`);
-        }
-        
-        const result = await response.json();
-        console.log('Réponse brute de publicites:', result);
-        
-        if (!result.data || result.data.length === 0) {
+        if (adsData.length === 0) {
           console.log('Aucune publicité trouvée');
           this.ads = [];
           this.totalItems = 0;
-          return;
+        } else {
+          console.log(`${adsData.length} publicités trouvées au total`);
+          this.processAdsData(adsData);
         }
-        
-        this.processAdsData(result.data);
         
       } catch (error) {
         console.error('Erreur lors du chargement des publicités:', error);
@@ -607,25 +865,54 @@ export default {
 
     // Méthode pour traiter les données récupérées
     processAdsData(data) {
-      this.ads = data.map(ad => ({
-        id: ad.id,
-        title: ad.titre || 'Sans titre',
-        type: ad.emplacement || 'banner',
-        location: ad.emplacement || 'homepage',
-        url: ad.url || '#',
-        image: ad.image ? `/uploads/${ad.image}` : null,
-        start_date: ad.date_debut || null,
-        end_date: ad.date_fin || null,
-        duree: ad.duree || null,
-        price: ad.prix || 0,
-        status: ad.status || ad.statut_affichage || 'draft',
-        days_left: ad.date_fin ? Math.max(0, Math.ceil((new Date(ad.date_fin) - new Date()) / (1000 * 60 * 60 * 24))) : null,
-        impressions: ad.impressions || 0,
-        clicks: ad.clics || 0,
-        ctr: ad.clics && ad.impressions ? (ad.clics / ad.impressions) : 0,
-        dimensions: '300x250' // Valeur par défaut, à remplacer par une propriété réelle si disponible
+      // D'abord, inspectons la structure complète des données brutes pour comprendre ce qui est disponible
+      console.log('Structure d\'une publicité brute:', data.length > 0 ? Object.keys(data[0]) : 'Aucune donnée');
+      
+      // Si des données existent, affichons la première publicité en détail
+      if(data.length > 0) {
+        console.log('Exemple de publicité brute:', JSON.stringify(data[0]));
+      }
+      
+      this.ads = data.map(ad => {
+        // Recherche du commande_id sous différents noms possibles
+        const commandeId = ad.commande_id || ad.commande || 
+                          (ad.commande_relation && ad.commande_relation.id) || null;
+        
+        console.log(`Publicité ID ${ad.id}: commande_id=${ad.commande_id}, commande=${ad.commande}`);
+        
+        return {
+          id: ad.id,
+          title: ad.titre || 'Sans titre',
+          type: ad.emplacement || 'banner',
+          location: ad.emplacement || 'homepage',
+          url: ad.url || '#',
+          image: ad.image ? this.getImageUrl(ad.image) : null,
+          start_date: ad.date_debut || null,
+          end_date: ad.date_fin || null,
+          duree: ad.duree || null,
+          price: ad.prix || 0,
+          status: ad.status || ad.statut_affichage || 'draft',
+          days_left: ad.date_fin ? Math.max(0, Math.ceil((new Date(ad.date_fin) - new Date()) / (1000 * 60 * 60 * 24))) : null,
+          impressions: ad.impressions || 0,
+          clicks: ad.clics || 0,
+          ctr: ad.clics && ad.impressions ? (ad.clics / ad.impressions) : 0,
+          dimensions: this.getDimensionsFromEmplacement(ad.emplacement) || '300x250', 
+          commande_id: commandeId,
+          date_created: ad.date_created || null
+        };
+      });
+      
+      // Ajoutons plus de logs pour mieux comprendre
+      console.log('IDs de commande dans les données brutes:', data.map(ad => {
+        return {
+          id: ad.id,
+          commande_id: ad.commande_id,
+          commande: ad.commande
+        };
       }));
       
+      console.log('IDs de commande transformés:', this.ads.map(ad => ad.commande_id));
+
       // Vérifier si des publicités sont expirées et mettre à jour leur statut
       const now = new Date();
       this.ads.forEach(ad => {
@@ -636,6 +923,68 @@ export default {
       
       this.totalItems = this.ads.length;
       console.log('Publicités transformées:', this.ads);
+      
+      // Appliquer le tri par défaut
+      this.sortAds();
+    },
+    
+    // Obtenir les dimensions en fonction de l'emplacement
+    getDimensionsFromEmplacement(emplacement) {
+      const dimensionsMap = {
+        'home_top': '1030x200',
+        'home_footer': '1030x200',
+        'inside_footer': '1030x200',
+        'article_right_top': '320x320',
+        'article_right_bottom': '320x640',
+        'annonce_sidebar_top': '320x320',
+        'annonce_sidebar_bottom': '320x320'
+      };
+      
+      return dimensionsMap[emplacement] || '320x320 px';
+    },
+
+    // Méthode pour trier les publicités
+    sortAds() {
+      this.ads.sort((a, b) => {
+        let valueA, valueB;
+        
+        // Extraire les valeurs à comparer selon le champ de tri
+        switch (this.sortField) {
+          case 'date_created':
+            valueA = new Date(a.date_created || 0);
+            valueB = new Date(b.date_created || 0);
+            break;
+          case 'start_date':
+            valueA = new Date(a.start_date || 0);
+            valueB = new Date(b.start_date || 0);
+            break;
+          case 'end_date':
+            valueA = new Date(a.end_date || 0);
+            valueB = new Date(b.end_date || 0);
+            break;
+          case 'commande_id':
+            valueA = a.commande_id || 0;
+            valueB = b.commande_id || 0;
+            break;
+          default:
+            valueA = a[this.sortField] || 0;
+            valueB = b[this.sortField] || 0;
+        }
+        
+        // Déterminer l'ordre de tri
+        const direction = this.sortDirection === 'asc' ? 1 : -1;
+        
+        // Comparer les valeurs
+        if (valueA < valueB) return -1 * direction;
+        if (valueA > valueB) return 1 * direction;
+        return 0;
+      });
+    },
+
+    handleImageError(event, ad) {
+      console.warn(`Erreur de chargement de l'image pour la publicité ID ${ad.id}`, event);
+      // Marquer l'image comme indisponible pour afficher le placeholder à la place
+      ad.image = null;
     },
     
     // Calculer la date de fin à partir de la date de début et de la durée
@@ -709,8 +1058,8 @@ export default {
     // Création d'une publicité avec gestion de la durée
     async createAd(adData) {
       try {
-        // Assurer que client_id est défini (en utilisant le userId des props)
-        adData.client_id = this.userId;
+        // Assurer que client_id est défini (en utilisant le effectiveUserId)
+        adData.client_id = this.effectiveUserId;
         
         // Si date_debut et duree sont définies, calculer date_fin
         if (adData.date_debut && adData.duree) {
@@ -752,6 +1101,32 @@ export default {
         }
       }
     },
+
+    // Obtenir l'URL d'une image
+    getImageUrl(imageId) {
+      if (!imageId) return null;
+      
+      // Si imageId est déjà un objet avec une URL
+      if (typeof imageId === 'object' && imageId.url) {
+        return imageId.url;
+      }
+      
+      // Si imageId est déjà une URL complète
+      if (typeof imageId === 'string' && (imageId.startsWith('http://') || imageId.startsWith('https://'))) {
+        return imageId;
+      }
+      
+      // Vérifier si nous sommes en environnement de développement
+      const isDev = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
+      
+      // Adapter l'URL selon l'environnement
+      if (isDev) {
+        return `http://localhost:8055/assets/${imageId}`;
+      } else {
+        // En production, utiliser le domaine actuel
+        return `/api/directus/assets/${imageId}`;
+      }
+    }, 
 
     // Réactiver une publicité
     async reactivateAd(adId) {
@@ -913,11 +1288,11 @@ export default {
     getStatusLabel(status) {
       const statusLabels = {
         'draft': 'Brouillon',
-        'active': 'Actif',
-        'archived': 'Archivé',
-        'suspended': 'Suspendu',
+        'active': 'Active',
+        'archived': 'Archivée',
+        'suspended': 'Suspendue',
         'pending': 'En attente',
-        'expired': 'Expiré'
+        'expired': 'Expirée'
       };
       return statusLabels[status] || status;
     },
@@ -930,7 +1305,14 @@ export default {
         'homepage': 'Page d\'accueil',
         'search_results': 'Résultats de recherche',
         'listing_page': 'Page d\'annonce',
-        'popup': 'Pop-up'
+        'popup': 'Pop-up',
+        'home_top': 'Haut de page d\'accueil',
+        'home_footer': 'Bas de page d\'accueil',
+        'inside_footer': 'Bas de page intérieure',
+        'article_right_top': 'Haut droite des pages articles',
+        'article_right_bottom': 'Bas droite des pages articles',
+        'annonce_sidebar_top': 'Haut droite des pages immobilières',
+        'annonce_sidebar_bottom': 'Bas droite des pages immobilières'
       };
       return typeLabels[type] || type;
     },
@@ -943,7 +1325,14 @@ export default {
         'listing_page': 'Page d\'annonce',
         'sidebar': 'Barre latérale',
         'footer': 'Pied de page',
-        'header': 'En-tête'
+        'header': 'En-tête',
+        'home_top': 'Haut de page d\'accueil',
+        'home_footer': 'Bas de page d\'accueil',
+        'inside_footer': 'Bas de page intérieure',
+        'article_right_top': 'Haut droite des pages articles',
+        'article_right_bottom': 'Bas droite des pages articles',
+        'annonce_sidebar_top': 'Haut droite des pages immobilières',
+        'annonce_sidebar_bottom': 'Bas droite des pages immobilières'
       };
       return locationLabels[location] || location;
     },
@@ -979,16 +1368,34 @@ export default {
         maximumFractionDigits: 2
       });
     },
-    
-    // Méthodes pour les actions
-    viewAdStats(adId) { 
-      this.showNotification(`Redirection vers les statistiques de la publicité #${adId}`);
-    },
-    
+      
+   // Méthode pour éditer une publicité
     editAd(adId) {
-      this.showNotification(`Redirection vers l'édition de la publicité #${adId}`);
+      // Rediriger vers la page d'édition avec l'ID de la publicité
+      this.$router.push(`/ads/modifier?id=${adId}`);
     },
-    
+
+    // Méthode pour consulter les statistiques d'une publicité
+    viewAdStats(adId) {
+      // Rediriger vers la page de statistiques avec l'ID de la publicité
+      this.$router.push(`/ads/statistiques?id=${adId}`);
+    },
+
+    // Méthode pour prolonger une publicité
+    extendAd(adId) {
+      // Rediriger vers la page de modification avec l'option de prolongation
+      this.$router.push(`/ads/modifier?id=${adId}&extend=true`);
+    },
+
+    // Méthode pour formater l'ID de commande
+    formatCommandeId(id) {
+      console.log('Formatage de l\'ID de commande:', id);
+      if (!id) return null;
+      // Ajouter un zéro-padding pour avoir au moins 4 chiffres
+      const paddedId = String(id).padStart(4, '0');
+      return `#ORD-${paddedId}`;
+    },
+
     // Notification toast
     showNotification(message) {
       // Nettoyer tout timer existant

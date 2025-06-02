@@ -1,5 +1,5 @@
 <template>
-  <div class="container mx-auto px-4 pt-8 mb-32">
+  <div class="container mx-auto pt-8 mb-32">
     <div class="mt-12 mb-12">
       <SearchBar />
     </div>
@@ -30,7 +30,7 @@
     </div>
     
     <!-- Critères de recherche appliqués -->
-    <div v-if="searchActive && Object.keys(searchCriteria).length > 0" class="mb-6 p-4 bg-gray-100 rounded-lg">
+    <div v-if="searchActive && Object.keys(searchCriteria).length > 0" class="mb-6 p-4 bg-amber-100 rounded-lg">
       <h2 class="font-semibold mb-2">Critères de recherche :</h2>
       <div class="flex flex-wrap gap-2">
         <div v-if="searchCriteria.category" class="px-3 py-1 bg-white border rounded-full text-sm">

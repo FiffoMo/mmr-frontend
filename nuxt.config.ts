@@ -18,11 +18,23 @@ export default defineNuxtConfig({
     dirs: ['stores'],
   },
 
-  // Vous pouvez aussi définir l'URL de Directus ici
+  // Configuration de l'URL Directus et du chemin des assets
   runtimeConfig: {
     public: {
-      directusUrl: process.env.DIRECTUS_URL || 'http://localhost:8055'
+      directusUrl: process.env.DIRECTUS_URL || 'http://localhost:8055',
+      assetsBaseUrl: process.env.ASSETS_BASE_URL || '/api/assets'
     }
+  },
+
+  // Middleware serveur pour les assets
+  serverMiddleware: [
+    { path: '/api/assets', handler: '~/server/middleware/assets.js' }
+  ],
+
+  // Définir des alias pour les chemins courants
+  alias: {
+    'assets': '~/assets',
+    'uploads': '~/assets/uploads'
   },
 
   compatibilityDate: '2025-03-24'
