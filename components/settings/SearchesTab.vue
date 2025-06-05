@@ -50,6 +50,11 @@
     <!-- Données disponibles -->
     <div v-else-if="searches.length > 0" class="searches-container">
       <h3 class="text-xl font-bold mb-6">Mes alertes (<span>{{ searches.length }}</span>)</h3>
+
+      <p class="text-gray-500 mb-6">
+        Créez une alerte email cliquant sur l'<strong><span style="background-color:#C0FAFF">icône Cloche</span></strong> qui apparaît sur chaque annonce immobilière<br>
+        ou cliquez sur le bouton <strong><span style="background-color:#C0FAFF">"Alerte email"</span></strong> à droite des pages du site et renseignez vos critères de recherches.
+      </p>
       
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div v-for="(search, index) in searches" :key="index" class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
@@ -57,25 +62,6 @@
             <h4 class="font-medium text-gray-900 truncate">
               {{ search && search.nom ? search.nom : 'Alerte sans nom' }}
             </h4>
-            <div class="flex space-x-2">
-              <button 
-                @click="toggleSearchStatus(search)" 
-                class="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
-                :class="search.notifications_actives ? 'text-cyan-600 bg-cyan-100' : 'text-gray-400 bg-gray-200'"
-                :title="search.notifications_actives ? 'Désactiver l\'alerte' : 'Activer l\'alerte'">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-              </button>
-              <button 
-                @click="deleteSearch(search)" 
-                class="p-1 rounded-full text-red-600 bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
-                title="Supprimer l'alerte">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
           </div>
           <div class="p-4">
             <div class="space-y-3">
@@ -132,16 +118,30 @@
           </div>
           <div class="bg-slate-100 px-4 py-3 border-t border-gray-200 flex justify-between items-center">
             <small class="text-xs text-gray-500">Créée le {{ formatDate(search.date_created) }}</small>
-            <NuxtLink 
-              :to="`/recherche?criteria=${encodeSearchCriteria(search)}`" 
-              class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-cyan-700 bg-cyan-100 hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
-              Voir les biens
-            </NuxtLink>
+            <div class="flex space-x-2">
+              <button 
+                @click="toggleSearchStatus(search)" 
+                class="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+                :class="search.notifications_actives ? 'text-cyan-600 bg-cyan-100' : 'text-gray-400 bg-gray-200'"
+                :title="search.notifications_actives ? 'Désactiver l\'alerte' : 'Activer l\'alerte'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+              </button>
+              <button 
+                @click="deleteSearch(search)" 
+                class="p-1 rounded-full text-red-600 bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
+                title="Supprimer l'alerte">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </div>  
 </template>
 
 <script>

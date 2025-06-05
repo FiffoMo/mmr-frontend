@@ -48,7 +48,7 @@
       <p class="text-sm text-gray-500 mb-6 max-w-md mx-auto">
         Vous n'avez pas encore publié d'annonce immobilière. Pour commencer, créez votre première annonce en cliquant sur le bouton ci-dessous.
       </p>
-      <NuxtLink to="/publier-annonce" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-500 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
+      <NuxtLink to="/dashboard/annonces/createAnnonce" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-500 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
         <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
         </svg>
@@ -132,10 +132,32 @@
       </div>
 
         <!-- Aucune annonce dans ce forfait -->
-        <div v-if="!forfait.annonces || filteredAnnonces(forfait).length === 0" class="bg-slate-100 p-6 rounded-b-lg text-center mb-4 border-t-0 border border-gray-100">
+        <div v-if="!forfait.annonces || forfait.annonces.length === 0" class="bg-slate-100 p-6 rounded-b-lg text-center mb-4 border-t-0 border border-gray-100">
           <p class="text-gray-500 text-sm mb-3">
-            <span v-if="forfait.annonces && forfait.annonces.length > 0">Aucune annonce ne correspond à vos critères de recherche.</span>
-            <span v-else>Aucune annonce n'est associée à ce forfait.</span>
+            Aucune annonce n'est associée à ce forfait.
+          </p>
+          <button 
+            v-if="canAddAnnonceToForfait(forfait)"
+            @click="goToCreateListing(forfait.id)" 
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-cyan-500 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+          >
+            <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            Publier ma première annonce
+          </button>
+          <div v-else-if="forfaitExpire(forfait)" class="text-red-500 text-sm">
+            <svg class="inline h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            Forfait expiré - Veuillez le renouveler
+          </div>
+        </div>
+
+        <!-- Forfait avec annonces mais aucune ne correspond aux filtres -->
+        <div v-else-if="forfait.annonces && forfait.annonces.length > 0 && filteredAnnonces(forfait).length === 0" class="bg-slate-100 p-6 rounded-b-lg text-center mb-4 border-t-0 border border-gray-100">
+          <p class="text-gray-500 text-sm mb-3">
+            Aucune annonce ne correspond à vos critères de recherche.
           </p>
           <button 
             v-if="canAddAnnonceToForfait(forfait)"
@@ -525,23 +547,36 @@ export default {
   computed: {
     // Autres computed properties...
     
-    // Filtrer les forfaits selon les critères (forfaitFilter) et exclure les forfaits "mise en avant"
+    // Filtrer les forfaits selon les critères et n'afficher que les forfaits "Annonces"
     filteredForfaits() {
       if (!this.forfaits || this.forfaits.length === 0) {
         return [];
       }
       
-      // Filtrer pour exclure les forfaits de type "mise en avant" et "publicite"
+      // Filtrer pour n'inclure que les forfaits de type "Annonces"
       let forfaitsFiltered = this.forfaits.filter(forfait => {
-        // Vérifier si le forfait a un type spécifié
-        const forfaitType = (forfait.type || '').toLowerCase();
-        const produitType = (forfait.produit?.type || '').toLowerCase();
+        const typeProduit = forfait.type_produit || '';
+        const nomProduit = (forfait.produit?.nom || '').toLowerCase();
         
-        // Exclure les forfaits avec le type "mise_en_avant" ou "publicite"
-        return forfaitType !== 'mise_en_avant' && 
-              forfaitType !== 'publicite' && 
-              produitType !== 'mise_en_avant' && 
-              produitType !== 'publicite';
+        // Inclure explicitement les forfaits d'Annonces
+        if (typeProduit === 'Annonces' || typeProduit === 'annonces') {
+          return true;
+        }
+        
+        // Inclure si le nom contient des mots-clés d'annonces
+        if (nomProduit.includes('annonce') || nomProduit.includes('basic') || 
+            nomProduit.includes('premium') || nomProduit.includes('dixit')) {
+          return true;
+        }
+        
+        // Exclure explicitement mise en avant et publicité
+        if (typeProduit.includes('mise') || typeProduit.includes('pub') ||
+            nomProduit.includes('mise en avant') || nomProduit.includes('pub')) {
+          return false;
+        }
+        
+        // Par défaut, inclure si type_produit est vide (compatibilité)
+        return typeProduit === '';
       });
       
       // Si aucun filtre de forfait n'est sélectionné, retourner tous les forfaits filtrés
@@ -669,29 +704,33 @@ export default {
         if (commandesResult && commandesResult.length > 0) {
           console.log("Commandes récupérées via SDK:", commandesResult);
           forfaits = commandesResult;
+        } else {
+          console.log("Aucune commande trouvée via SDK, essai avec fetch direct...");
         }
       } catch (error) {
-        console.log("Erreur avec SDK:", error);
-        
-        // Essai 2: Utiliser fetch directement
+        console.warn('SDK échoué:', error);
+      }
+      
+      // Si pas de résultat avec le SDK, essayer avec fetch direct (comme dans OrdersTab)
+      if (forfaits.length === 0) {
         try {
-          const response = await fetch(`/api/directus/items/commandes?filter[client_id][_eq]=${userId}&fields=*,produit.*`, {
+          const filter = encodeURIComponent(JSON.stringify({ client_id: { _eq: userId } }));
+          const response = await fetch(`/api/directus/items/commandes?filter=${filter}&fields=*,produit.*`, {
             credentials: 'include'
           });
-          
+
           if (!response.ok) {
-            throw new Error(`Erreur HTTP: ${response.status}`);
+            const errorData = await response.json();
+            console.error('Erreur API:', errorData);
+            throw new Error(`Erreur API: ${errorData?.errors?.[0]?.message || response.statusText}`);
           }
           
-          const result = await response.json();
-          console.log("Commandes récupérées via fetch:", result);
-          
-          if (result.data && result.data.length > 0) {
-            forfaits = result.data;
-          }
+          const data = await response.json();
+          console.log('Commandes récupérées par fetch direct:', data);
+          forfaits = data.data || [];
         } catch (fetchError) {
-          console.error('Erreur lors de la récupération des commandes via fetch:', fetchError);
-          throw new Error("Impossible de charger vos forfaits. Veuillez réessayer.");
+          console.error('Erreur avec fetch direct:', fetchError);
+          throw new Error('Impossible de charger vos forfaits. Veuillez réessayer.');
         }
       }
       
@@ -707,7 +746,8 @@ export default {
       let annonces = [];
       
       try {
-        const annonceResponse = await fetch(`/api/directus/items/Annonces?filter[client_id][_eq]=${userId}`, {
+        const annonceFilter = encodeURIComponent(JSON.stringify({ client_id: { _eq: userId } }));
+        const annonceResponse = await fetch(`/api/directus/items/Annonces?filter=${annonceFilter}`, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
@@ -759,11 +799,31 @@ export default {
         };
       });
       
-      // CORRECTION : Filtrer les forfaits pour n'inclure que ceux de type "annonces"
+      // CORRECTION : Filtrer les forfaits pour n'inclure que ceux de type "Annonces"
       console.log("Avant filtrage:", forfaitsAvecAnnonces.length, "forfaits");
       forfaitsAvecAnnonces = forfaitsAvecAnnonces.filter(forfait => {
         const typeProduit = forfait.type_produit || '';
-        return typeProduit === 'annonces' || typeProduit === '';
+        const nomProduit = (forfait.produit?.nom || '').toLowerCase();
+        
+        // Inclure explicitement les forfaits d'Annonces (avec majuscule)
+        if (typeProduit === 'Annonces' || typeProduit === 'annonces') {
+          return true;
+        }
+        
+        // Inclure si le nom contient des mots-clés d'annonces
+        if (nomProduit.includes('annonce') || nomProduit.includes('basic') || 
+            nomProduit.includes('premium') || nomProduit.includes('dixit')) {
+          return true;
+        }
+        
+        // Exclure explicitement mise en avant et publicité
+        if (typeProduit.includes('mise') || typeProduit.includes('pub') ||
+            nomProduit.includes('mise en avant') || nomProduit.includes('pub')) {
+          return false;
+        }
+        
+        // Par défaut, inclure si type_produit est vide (compatibilité)
+        return typeProduit === '';
       });
       console.log("Après filtrage par type_produit:", forfaitsAvecAnnonces.length, "forfaits");
       
@@ -962,9 +1022,42 @@ export default {
   
   
   goToCreateListing(forfaitId) {
-    console.log(`Redirection vers la page de création d'annonce avec le forfait ${forfaitId}`);
+    console.log(`=== REDIRECTION CRÉATION ANNONCE ===`);
+    console.log(`Forfait ID: ${forfaitId}`);
+    console.log(`Forfaits disponibles:`, this.forfaits);
     
-    // Rediriger vers la page de création d'annonce avec l'ID du forfait en paramètre d'URL
+    // Si pas de forfaitId spécifique, prendre le premier forfait disponible
+    if (!forfaitId && this.forfaits && this.forfaits.length > 0) {
+      forfaitId = this.forfaits[0].id;
+      console.log(`Utilisation du premier forfait disponible: ${forfaitId}`);
+    }
+    
+    // Vérifier que le forfait existe
+    const forfait = this.forfaits.find(f => f.id === forfaitId);
+    if (!forfait) {
+      console.error(`Forfait non trouvé: ${forfaitId}`);
+      console.error(`Forfaits disponibles:`, this.forfaits.map(f => ({id: f.id, nom: f.produit?.nom})));
+      alert('Forfait non trouvé. Veuillez rafraîchir la page.');
+      return;
+    }
+    
+    console.log(`Forfait trouvé:`, forfait);
+    
+    // Vérifier si le forfait n'est pas expiré
+    if (this.forfaitExpire(forfait)) {
+      alert('Ce forfait est expiré. Veuillez le renouveler pour publier une nouvelle annonce.');
+      return;
+    }
+    
+    // Vérifier s'il reste de la place
+    if (!this.canAddAnnonceToForfait(forfait)) {
+      alert('Ce forfait a atteint sa limite d\'annonces. Veuillez acheter un nouveau forfait.');
+      return;
+    }
+    
+    console.log(`Redirection vers: /dashboard/annonces/createAnnonce?forfait=${forfaitId}`);
+    
+    // Redirection avec l'ID du forfait pour lier l'annonce
     window.location.href = `/dashboard/annonces/createAnnonce?forfait=${forfaitId}`;
   },
     

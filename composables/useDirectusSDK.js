@@ -1,4 +1,4 @@
-// composables/useDirectusSDK.js
+// composables/useDirectusSDK.js - VERSION CORRIGÉE
 import { ref } from 'vue';
 
 export const useDirectusSDK = () => {
@@ -20,11 +20,26 @@ export const useDirectusSDK = () => {
       const url = `/api/directus${endpoint}`;
       console.log(`SDK: Appel API via proxy: ${url}`);
       
+      // CORRECTION: Import correct du store d'authentification
+      const { useAuthStore } = await import('@/stores/useAuthStore');
+      const authStore = useAuthStore();
+      
       // S'assurer que les credentials sont inclus
       const fetchOptions = {
         ...options,
         credentials: 'include'
       };
+      
+      // Ajouter le token d'authentification si disponible
+      if (authStore.token) {
+        fetchOptions.headers = {
+          ...fetchOptions.headers,
+          'Authorization': `Bearer ${authStore.token}`
+        };
+        console.log(`SDK: Token utilisateur ajouté: ${authStore.token.substring(0, 20)}...`);
+      } else {
+        console.log('SDK: Aucun token utilisateur disponible');
+      }
       
       const response = await fetch(url, fetchOptions);
       
@@ -37,8 +52,15 @@ export const useDirectusSDK = () => {
       const data = await response.json();
       console.log('SDK: Réponse API reçue', data);
       
-      // Directus renvoie toujours les données dans un objet "data"
-      return data.data;
+      // CORRECTION: Directus peut retourner différentes structures
+      // Pour /users/me, les données peuvent être directement dans la réponse
+      if (data.data !== undefined) {
+        return data.data;  // Structure standard {data: {...}}
+      } else if (data.id !== undefined) {
+        return data;       // Structure directe pour certaines opérations users
+      } else {
+        return data;       // Retourner la réponse complète
+      }
     } catch (err) {
       console.error('SDK: Erreur API détaillée:', err);
       error.value = err.message || 'Une erreur est survenue';
@@ -113,7 +135,6 @@ export const useDirectusSDK = () => {
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
     return apiCall(`/items/${collection}/${id}${queryString}`);
   };
-  
   
   /**
    * Créer un nouvel élément
@@ -206,8 +227,8 @@ export const useDirectusSDK = () => {
         throw new Error('Impossible de récupérer l\'ID utilisateur');
       }
       
-      // Utiliser client_id au lieu de utilisateur
-      return getItems('preferences_notifications', {
+      // CORRECTION: Utiliser user_preferences au lieu de preferences_notifications
+      return getItems('user_preferences', {
         filter: { client_id: { _eq: user.id } }
       });
     } catch (error) {
@@ -241,13 +262,22 @@ export const useDirectusSDK = () => {
       
       // Essayer avec fetch directement en cas d'erreur avec getItems
       try {
+        const { useAuthStore } = await import('@/stores/useAuthStore');
+        const authStore = useAuthStore();
         const userId = error.userId || (await getUserProfile(['id']))?.id;
+        
         if (!userId) {
           throw new Error('ID utilisateur non disponible');
         }
         
-        // Utiliser client_id au lieu de utilisateur
-        const response = await fetch(`/api/directus/items/favoris?filter[client_id][_eq]=${userId}&fields=id,status,date_created,client_id,annonce.id,annonce.Titre,annonce.prix_vente,annonce.localisation,annonce.surface_habitable,annonce.pieces,annonce.chambres,annonce.image_principale`);
+        // CORRECTION: Utiliser le pattern harmonisé avec filtres JSON encodés
+        const filter = encodeURIComponent(JSON.stringify({ client_id: { _eq: userId } }));
+        const response = await fetch(`/api/directus/items/favoris?filter=${filter}&fields=id,status,date_created,client_id,annonce.id,annonce.Titre,annonce.prix_vente,annonce.localisation,annonce.surface_habitable,annonce.pieces,annonce.chambres,annonce.image_principale`, {
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`
+          }
+        });
         
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
@@ -424,139 +454,48 @@ const getUserForfaitsWithListings = async (userId) => {
     // 1. Récupérer les commandes de l'utilisateur (qui sont des forfaits d'annonces)
     const commandes = await getItems('commandes', {
       filter: {
-        client_id: { _eq: userId },
-        // Utiliser la valeur correcte 'annonces' pour le type de produit
-        type_produit: { _eq: 'annonces' }
+        client_id: { _eq: userId }
       },
       fields: '*,produit.*',
       sort: '-date_created'
     });
     
     if (!commandes || commandes.length === 0) {
-      // Si aucune commande n'est trouvée avec ce filtre, essayer sans le filtre type_produit
-      // car il se peut que les enregistrements existants n'aient pas ce champ rempli
-      console.log('Aucune commande trouvée avec le filtre type_produit. Essai sans ce filtre...');
-      
-      const toutesCommandes = await getItems('commandes', {
-        filter: {
-          client_id: { _eq: userId }
-        },
-        fields: '*,produit.*',
-        sort: '-date_created'
-      });
-      
-      if (!toutesCommandes || toutesCommandes.length === 0) {
-        return [];
-      }
-      
-      // Filtrer manuellement les commandes qui semblent être des forfaits d'annonces
-      // en se basant sur les autres propriétés
-      const commandesFiltrees = toutesCommandes.filter(commande => 
-        commande.produit && 
-        (commande.produit.type_produit === 'annonces' || 
-         commande.annonces_restantes !== null ||
-         (commande.produit.nom && commande.produit.nom.toLowerCase().includes('annonce')))
-      );
-      
-      if (commandesFiltrees.length === 0) {
-        return [];
-      }
-      
-      // Continuer avec les commandes filtrées
-      return await traiterCommandes(commandesFiltrees);
+      return [];
     }
     
-    // Continuer avec les commandes trouvées avec le filtre exact
-    return await traiterCommandes(commandes);
+    // 2. Filtrer pour ne garder que les forfaits d'annonces
+    const forfaitsAnnonces = commandes.filter(commande => {
+      const typeProduit = commande.type_produit || (commande.produit && commande.produit.type_produit) || '';
+      const nomProduit = (commande.produit?.nom || '').toLowerCase();
+      
+      // Inclure explicitement les forfaits d'Annonces
+      if (typeProduit === 'Annonces' || typeProduit === 'annonces') {
+        return true;
+      }
+      
+      // Inclure si le nom contient des mots-clés d'annonces
+      if (nomProduit.includes('annonce') || nomProduit.includes('basic') || 
+          nomProduit.includes('premium') || nomProduit.includes('dixit')) {
+        return true;
+      }
+      
+      // Exclure explicitement mise en avant et publicité
+      if (typeProduit.includes('mise') || typeProduit.includes('pub') ||
+          nomProduit.includes('mise en avant') || nomProduit.includes('pub')) {
+        return false;
+      }
+      
+      // Par défaut, inclure si type_produit est vide (compatibilité)
+      return typeProduit === '';
+    });
+    
+    // Continuer avec les forfaits filtrés
+    return await traiterCommandes(forfaitsAnnonces);
     
   } catch (error) {
     console.error('Erreur dans getUserForfaitsWithListings:', error);
-    
-    // Implémentation de secours avec un timeout pour éviter les blocages
-    const timeout = setTimeout(() => {
-      console.warn('Timeout atteint lors de la récupération des forfaits');
-      return [];
-    }, 5000);
-    
-    try {
-      // Essayer une approche alternative plus directe
-      if (!userId) {
-        const user = await getUserProfile(['id']);
-        userId = user?.id;
-      }
-      
-      // Récupération directe via fetch
-      const response = await fetch(`/api/directus/items/commandes?filter[client_id][_eq]=${userId}&fields=*,produit.*`, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      const commandes = result.data || [];
-      
-      // Filtrer les forfaits d'annonces
-      const forfaits = commandes.filter(commande => 
-        commande.type_produit === 'annonces' || 
-        (commande.produit && commande.produit.type_produit === 'annonces')
-      );
-      
-      if (forfaits.length === 0) {
-        clearTimeout(timeout);
-        return [];
-      }
-      
-      // Pour chaque forfait, récupérer les annonces associées
-      const forfaritsAvecAnnonces = await Promise.all(
-        forfaits.map(async (forfait) => {
-          try {
-            const annonceResponse = await fetch(`/api/directus/items/annonces?filter[commande_id][_eq]=${forfait.id}&fields=*`, {
-              credentials: 'include'
-            });
-            
-            if (!annonceResponse.ok) {
-              return {
-                ...forfait,
-                annonces: []
-              };
-            }
-            
-            const annonceResult = await annonceResponse.json();
-            return {
-              id: forfait.id,
-              client_id: forfait.client_id,
-              date_debut: forfait.date_debut,
-              date_fin: forfait.date_fin,
-              status: forfait.status,
-              forfait_type: forfait.produit?.nom || 'Forfait',
-              description: forfait.produit?.description || '',
-              nombre_annonces_total: forfait.produit?.nombre || 0,
-              nombre_annonces_restantes: forfait.annonces_restantes || 0,
-              duree_jours: forfait.produit?.duree_jours || 0,
-              prix: forfait.montant || forfait.produit?.prix || 0,
-              est_actif: new Date(forfait.date_fin) > new Date() && forfait.status === 'published',
-              reference: forfait.reference,
-              annonces: annonceResult.data || []
-            };
-          } catch (e) {
-            console.error(`Erreur lors de la récupération des annonces pour le forfait ${forfait.id}:`, e);
-            return {
-              ...forfait,
-              annonces: []
-            };
-          }
-        })
-      );
-      
-      clearTimeout(timeout);
-      return forfaritsAvecAnnonces;
-    } catch (altError) {
-      clearTimeout(timeout);
-      console.error('Erreur alternative dans getUserForfaitsWithListings:', altError);
-      return [];
-    }
+    return [];
   }
 };
 

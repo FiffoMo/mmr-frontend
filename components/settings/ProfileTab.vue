@@ -492,8 +492,7 @@ export default {
       this.profileForm.avatar_file = null;
     },
     
-    // Enregistrer le profil avec le SDK
-    // Méthode saveProfile() complète et corrigée pour ProfileTab.vue
+    // Enregistrer le profil avec le SDK - VERSION CORRIGÉE POUR CHECKBOXES
     async saveProfile() {
       this.saving = true;
       
@@ -512,7 +511,7 @@ export default {
           }
         }
         
-        // Données à envoyer
+        // CORRECTION: S'assurer que les valeurs boolean sont correctement typées
         const userData = {
           first_name: this.profileForm.first_name,
           last_name: this.profileForm.last_name,
@@ -523,10 +522,22 @@ export default {
           phone: this.profileForm.phone,
           address: this.profileForm.address,
           contact_instructions: this.profileForm.contact_instructions,
-          hide_email: this.profileForm.hide_email,
-          hide_phone: this.profileForm.hide_phone,
-          hide_address: this.profileForm.hide_address
+          // CORRECTION: Conversion explicite en boolean et logs de debug
+          hide_email: Boolean(this.profileForm.hide_email),
+          hide_phone: Boolean(this.profileForm.hide_phone),
+          hide_address: Boolean(this.profileForm.hide_address)
         };
+        
+        console.log('=== DEBUG CHECKBOXES ===');
+        console.log('Valeurs du formulaire:');
+        console.log('- hide_email:', this.profileForm.hide_email, typeof this.profileForm.hide_email);
+        console.log('- hide_phone:', this.profileForm.hide_phone, typeof this.profileForm.hide_phone);
+        console.log('- hide_address:', this.profileForm.hide_address, typeof this.profileForm.hide_address);
+        console.log('Valeurs converties:');
+        console.log('- hide_email:', userData.hide_email, typeof userData.hide_email);
+        console.log('- hide_phone:', userData.hide_phone, typeof userData.hide_phone);
+        console.log('- hide_address:', userData.hide_address, typeof userData.hide_address);
+        console.log('========================');
         
         console.log('Mise à jour du profil avec données:', userData);
         
@@ -535,6 +546,14 @@ export default {
         
         if (result) {
           console.log('Profil mis à jour avec succès:', result);
+          
+          // CORRECTION: Vérifier les valeurs retournées
+          console.log('=== DEBUG RETOUR CHECKBOXES ===');
+          console.log('Valeurs retournées par Directus:');
+          console.log('- hide_email:', result.hide_email, typeof result.hide_email);
+          console.log('- hide_phone:', result.hide_phone, typeof result.hide_phone);
+          console.log('- hide_address:', result.hide_address, typeof result.hide_address);
+          console.log('===============================');
           
           // Mettre à jour le formulaire avec les données retournées
           this.initializeForm(result);

@@ -40,9 +40,13 @@
     </div>
     
     <!-- Liste des mises en avant actives -->
-    <div v-else-if="highlights.length > 0" class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div v-ifelse-="highlights.length > 0" class="grid grid-cols-1 xl:grid-cols-2 gap-6">
       <!-- Section pour chaque mise en avant -->
-      <div v-for="highlight in highlights" :key="highlight.id" class="bg-blue-100 rounded-lg shadow p-6 border border-gray-200">
+      <div v-for="highlight in highlights" :key="highlight.id" 
+        :class="[
+          'rounded-lg shadow p-6 border border-gray-200',
+          highlight.isExpired ? 'bg-slate-100' : 'bg-blue-100'
+        ]">
         <!-- En-tête avec info sur la commande -->
         <div class="mb-6">
           <h3 class="text-lg font-bold text-gray-900">
@@ -66,6 +70,7 @@
         
         <!-- Bouton de sélection d'annonce -->
         <button 
+          v-if="!highlight.isExpired"
           @click="openAnnonceSelector(highlight)" 
           class="px-4 py-2 border border-transparent text-sm text-center font-medium rounded-md text-white bg-cyan-500 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 mb-4"
         >

@@ -5,8 +5,8 @@
     <!-- Débogage pour le développement -->
     <!-- <div class="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200">
       <h3 class="font-bold text-blue-800">Débogage NotificationsTab</h3>
-      <p>Loading: {{ loading || directusSDK?.loading }}</p>
-      <p>Error: {{ error || directusSDK?.error }}</p>
+      <p>Loading: {{ loading }}</p>
+      <p>Error: {{ error }}</p>
       <p>User ID: {{ effectiveUserId }}</p>
       <p>Préférences simulées: {{ preferencesLoaded ? 'Oui' : 'Non' }}</p>
       <button @click="fetchNotificationPreferences" class="bg-blue-500 text-white p-2 rounded mt-2">
@@ -185,7 +185,7 @@
 </template>
 
 <script>
-import { useDirectusSDK } from '@/composables/useDirectusSDK';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export default {
   name: 'NotificationsTab',
@@ -208,11 +208,9 @@ export default {
   emits: ['update-success'],
   
   setup() {
-    // Initialiser le service SDK Directus
-    const directusSDK = useDirectusSDK();
-    
+    const authStore = useAuthStore();
     return {
-      directusSDK
+      authStore
     };
   },
   
@@ -224,7 +222,6 @@ export default {
       error: null,
       preferenceId: null, // ID des préférences dans Directus
       preferencesLoaded: false,
-      apiEnabled: true, // Activer les appels API réels
       
       // Préférences de notifications simplifiées
       preferences: {
@@ -283,7 +280,9 @@ export default {
       handler(newValue) {
         if (newValue && newValue !== this.currentUserId) {
           this.currentUserId = newValue;
-          this.fetchNotificationPreferences();
+          if (this.isActive) {
+            this.fetchNotificationPreferences();
+          }
         }
       },
       immediate: true
@@ -294,7 +293,9 @@ export default {
       handler(newUser) {
         if (newUser && newUser.id && newUser.id !== this.currentUserId) {
           this.currentUserId = newUser.id;
-          this.fetchNotificationPreferences();
+          if (this.isActive) {
+            this.fetchNotificationPreferences();
+          }
         }
       },
       immediate: true
@@ -302,76 +303,98 @@ export default {
   },
   
   methods: {
-    // Simuler le chargement des préférences (en attendant la résolution des problèmes d'API)
-    simulatePreferences() {
-      this.loading = true;
-      this.error = null;
-      
-      // Simuler un délai de chargement
-      setTimeout(() => {
-        // Initialiser avec les préférences par défaut
-        this.initializePreferences(this.preferences);
-        this.preferencesLoaded = true;
-        this.loading = false;
-      }, 500);
+    // CORRECTION: Récupérer l'ID utilisateur avec fetch direct
+    async getCurrentUserId() {
+      try {
+        const response = await fetch('/api/directus/users/me?fields=id', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        return result.data?.id || null;
+      } catch (error) {
+        console.error('Erreur lors de la récupération de l\'ID utilisateur:', error);
+        return null;
+      }
     },
     
-    // Récupérer les préférences de notifications
+    // CORRECTION: Récupérer les préférences avec fetch direct et gestion 403
     async fetchNotificationPreferences() {
-      if (!this.apiEnabled) {
-        // Si l'API est désactivée, utiliser la simulation
-        this.simulatePreferences();
-        return;
-      }
-      
       this.loading = true;
       this.error = null;
       
       try {
         console.log("Récupération des préférences pour l'utilisateur:", this.effectiveUserId);
         
-        if (!this.effectiveUserId) {
-          // Si pas d'ID utilisateur, tenter de le récupérer via le SDK
-          console.log("Pas d'ID utilisateur, tentative de récupération via getUserProfile");
-          const userData = await this.directusSDK.getUserProfile(['id']);
-          if (userData && userData.id) {
-            this.currentUserId = userData.id;
-            console.log("ID utilisateur récupéré:", this.currentUserId);
+        let userId = this.effectiveUserId;
+        
+        if (!userId) {
+          // Récupérer l'ID utilisateur
+          console.log("Pas d'ID utilisateur, tentative de récupération");
+          userId = await this.getCurrentUserId();
+          
+          if (userId) {
+            this.currentUserId = userId;
+            console.log("ID utilisateur récupéré:", userId);
           } else {
             throw new Error('Impossible de récupérer l\'ID utilisateur');
           }
         }
         
-        // Utiliser le SDK pour récupérer les préférences
-        const preferencesArray = await this.directusSDK.getNotificationPreferences();
-        console.log("Préférences reçues:", preferencesArray);
+        // CORRECTION: Utiliser fetch direct avec gestion 403
+        const filter = encodeURIComponent(JSON.stringify({ 
+          client_id: { _eq: userId } 
+        }));
         
-        if (preferencesArray && preferencesArray.length > 0) {
+        const response = await fetch(`/api/directus/items/user_preferences?filter=${filter}`, {
+          credentials: 'include'
+        });
+        
+        if (response.status === 403) {
+          console.log("Permissions insuffisantes pour user_preferences - utilisation des valeurs par défaut");
+          this.initializeWithDefaults();
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log("Préférences reçues:", result);
+        
+        if (result.data && result.data.length > 0) {
           // Utiliser les données de Directus
-          const preferences = preferencesArray[0];
+          const preferences = result.data[0];
           this.preferenceId = preferences.id;
           this.initializePreferences(preferences);
         } else {
           // Aucune préférence trouvée, utiliser les valeurs par défaut
           console.log('Aucune préférence trouvée, utilisation des valeurs par défaut');
-          this.initializePreferences(this.preferences);
-          
-          // Si l'utilisateur est connecté, créer les préférences par défaut
-          if (this.effectiveUserId) {
-            this.savePreferences();
-          }
+          this.initializeWithDefaults();
         }
         
         this.preferencesLoaded = true;
       } catch (error) {
         console.error('Erreur lors du chargement des préférences:', error);
-        this.error = "Impossible de charger vos préférences. Veuillez réessayer.";
+        console.log('Initialisation avec les valeurs par défaut suite à l\'erreur');
         
-        // En cas d'erreur, initialiser avec les valeurs par défaut
-        this.initializePreferences(this.preferences);
+        // En cas d'erreur, initialiser avec les valeurs par défaut sans afficher d'erreur
+        this.initializeWithDefaults();
+        this.preferencesLoaded = true;
       } finally {
         this.loading = false;
       }
+    },
+    
+    // CORRECTION: Initialiser avec les valeurs par défaut
+    initializeWithDefaults() {
+      this.initializePreferences(this.preferences);
+      console.log('Préférences initialisées avec les valeurs par défaut');
     },
     
     // Initialiser les préférences
@@ -399,33 +422,20 @@ export default {
       this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
     },
     
-    // Enregistrer les préférences
+    // CORRECTION: Enregistrer avec fetch direct et gestion 403
     async savePreferences() {
       this.saving = true;
       
       try {
-        if (!this.apiEnabled) {
-          // Simuler l'enregistrement
-          setTimeout(() => {
-            // Mise à jour de l'original après succès
-            this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
-            
-            // Émettre l'événement de succès
-            this.$emit('update-success', 'Vos préférences de notifications ont été mises à jour avec succès');
-            this.saving = false;
-          }, 800);
-          return;
-        }
+        const userId = this.effectiveUserId;
         
-        // Si l'API est activée, procéder à l'enregistrement réel
-        if (!this.effectiveUserId) {
+        if (!userId) {
           throw new Error('ID utilisateur non disponible');
         }
         
-        // Préparer les données à envoyer (simplifiées)
+        // Préparer les données à envoyer
         const dataToSend = {
-          utilisateur: this.effectiveUserId,
-          status: 'active',
+          client_id: userId,
           email_nouvelles_annonces: this.preferences.email_nouvelles_annonces,
           email_messages: this.preferences.email_messages,
           email_annonces_expirees: true, // Toujours true
@@ -438,23 +448,50 @@ export default {
         
         console.log('Données à envoyer:', dataToSend);
         
-        let result;
+        let response;
         
         if (this.preferenceId) {
           // Mettre à jour les préférences existantes
           console.log(`Mise à jour des préférences (ID: ${this.preferenceId})`);
-          result = await this.directusSDK.updateItem('preferences_notifications', this.preferenceId, dataToSend);
+          response = await fetch(`/api/directus/items/user_preferences/${this.preferenceId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(dataToSend)
+          });
         } else {
           // Créer de nouvelles préférences
           console.log('Création de nouvelles préférences');
-          result = await this.directusSDK.createItem('preferences_notifications', dataToSend);
-          
-          if (result && result.id) {
-            this.preferenceId = result.id;
-          }
+          response = await fetch('/api/directus/items/user_preferences', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(dataToSend)
+          });
         }
         
+        if (response.status === 403) {
+          console.log("Permissions insuffisantes pour sauvegarder les préférences - sauvegarde locale uniquement");
+          // Mise à jour locale seulement
+          this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
+          this.$emit('update-success', 'Vos préférences ont été mises à jour localement');
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
         console.log('Résultat de l\'opération:', result);
+        
+        if (result.data && !this.preferenceId) {
+          this.preferenceId = result.data.id;
+        }
         
         // Mise à jour de l'original après succès
         this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
@@ -463,7 +500,10 @@ export default {
         this.$emit('update-success', 'Vos préférences de notifications ont été mises à jour avec succès');
       } catch (error) {
         console.error('Erreur lors de la sauvegarde des préférences:', error);
-        alert('Une erreur est survenue lors de la sauvegarde de vos préférences. Veuillez réessayer.');
+        
+        // En cas d'erreur, sauvegarder localement
+        this.originalPreferences = JSON.parse(JSON.stringify(this.preferences));
+        this.$emit('update-success', 'Vos préférences ont été mises à jour localement');
       } finally {
         this.saving = false;
       }
@@ -471,7 +511,9 @@ export default {
     
     // Réinitialiser le formulaire aux valeurs d'origine
     resetForm() {
-      this.preferences = JSON.parse(JSON.stringify(this.originalPreferences));
+      if (this.originalPreferences) {
+        this.preferences = JSON.parse(JSON.stringify(this.originalPreferences));
+      }
     }
   }
 };

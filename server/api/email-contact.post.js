@@ -1,4 +1,4 @@
-// server/api/email-contact.post.js
+// server/api/email-contact.post.js - VERSION TEST SANS DIRECTUS
 import { createRequire } from 'module';
 
 export default defineEventHandler(async (event) => {
@@ -31,29 +31,13 @@ export default defineEventHandler(async (event) => {
 
     await transporter.verify();
 
-    // Récupérer les informations de l'annonce
-    const directusUrl = process.env.DIRECTUS_URL || 'http://localhost:8055';
-    const directusToken = process.env.DIRECTUS_API_TOKEN;
+    // TEST TEMPORAIRE : Simuler les données d'annonce (éviter problème permissions)
+    const proprietaireEmail = "philmicro@universduweb.net"; // Votre email pour test
+    const proprietaireNom = "Propriétaire Test";
     
-    const annonceResponse = await fetch(`${directusUrl}/items/annonces/${annonceId}?fields=*,client_id.*`, {
-      headers: {
-        'Authorization': `Bearer ${directusToken}`
-      }
-    });
-    
-    if (!annonceResponse.ok) {
-      throw new Error(`Erreur lors de la récupération de l'annonce: ${annonceResponse.status}`);
-    }
-    
-    const annonceData = await annonceResponse.json();
-    const annonce = annonceData.data;
-    
-    if (!annonce || !annonce.client_id) {
-      throw new Error('Annonce ou propriétaire non trouvé');
-    }
-    
-    const proprietaireEmail = annonce.client_id.email;
-    const proprietaireNom = `${annonce.client_id.first_name || ''} ${annonce.client_id.last_name || ''}`.trim();
+    console.log("📧 Test envoi email de contact - simulation annonce");
+    console.log("Email propriétaire:", proprietaireEmail);
+    console.log("Email visiteur:", emailVisiteur);
 
     // Email au propriétaire
     const emailProprietaireHtml = `

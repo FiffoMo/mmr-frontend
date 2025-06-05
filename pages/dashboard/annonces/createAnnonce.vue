@@ -1021,8 +1021,29 @@ const loadForfaits = async (specificForfaitId = null) => {
     
     // Filtrer les commandes pour ne garder que celles avec un produit qui permet les annonces
     const commandesValides = result.data.filter(commande => {
-      return commande.produit && 
-             (commande.produit.nombre_annonces > 0 || commande.produit.limite_annonces > 0);
+      // Vérifier d'abord si c'est un forfait d'annonces
+      const typeProduit = commande.type_produit || '';
+      const nomProduit = (commande.produit?.nom || '').toLowerCase();
+      
+      // Inclure explicitement les forfaits d'Annonces
+      if (typeProduit === 'Annonces' || typeProduit === 'annonces') {
+        return true;
+      }
+      
+      // Inclure si le nom contient des mots-clés d'annonces
+      if (nomProduit.includes('annonce') || nomProduit.includes('basic') || 
+          nomProduit.includes('premium') || nomProduit.includes('dixit')) {
+        return true;
+      }
+      
+      // Exclure explicitement mise en avant et publicité
+      if (typeProduit.includes('mise') || typeProduit.includes('pub') ||
+          nomProduit.includes('mise en avant') || nomProduit.includes('pub')) {
+        return false;
+      }
+      
+      // Par défaut, inclure si type_produit est vide (compatibilité)
+      return typeProduit === '' && commande.produit;
     });
     
     console.log("Commandes valides après filtrage:", commandesValides);
